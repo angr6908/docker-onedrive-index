@@ -1,6 +1,6 @@
 # onedrive-index
 
-A Docker-first adaptation of `onedrive-vercel-index` for Linux `amd64`.
+A Docker-first adaptation of `onedrive-vercel-index`.
 
 This repository is intended for simple self-hosting with Docker and Docker Compose, with configuration provided through container environment variables.
 
