@@ -29,7 +29,7 @@ services:
       OD_BASE_DIRECTORY: "/"
       OD_MAX_ITEMS: "100"
       NEXT_PUBLIC_SITE_FOOTER: 'Powered by <a href="https://github.com/spencerwooo/onedrive-vercel-index" target="_blank" rel="noopener noreferrer">onedrive-vercel-index</a>.'
-      OD_PROTECTED_ROUTES: "[]"
+      OD_PROTECTED_ROUTES: '["/Private"]'
       NEXT_PUBLIC_SITE_EMAIL: ""
       NEXT_PUBLIC_SITE_LINKS: "[]"
       NEXT_PUBLIC_DATETIME_FORMAT: "YYYY-MM-DD HH:mm:ss"
