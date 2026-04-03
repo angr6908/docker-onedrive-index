@@ -23,8 +23,8 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      OD_CLIENT_ID: ""
-      OD_OBFUSCATED_CLIENT_SECRET: ""
+      OD_CLIENT_ID: "YOUR_OD_CLIENT_ID"
+      OD_OBFUSCATED_CLIENT_SECRET: "YOUR_OD_OBFUSCATED_CLIENT_SECRET"
       NEXT_PUBLIC_SITE_TITLE: "OneDrive"
       OD_BASE_DIRECTORY: "/"
       OD_MAX_ITEMS: "100"
