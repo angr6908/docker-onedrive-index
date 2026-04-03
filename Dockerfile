@@ -32,19 +32,16 @@ ENV PORT=3000
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat libstdc++ \
-  && addgroup -S nodejs -g 1001 \
-  && adduser -S nextjs -u 1001 -G nodejs
+  && true
 
 COPY --from=base /usr/local/bin/node /usr/local/bin/node
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/config ./config
-COPY --from=builder --chown=nextjs:nodejs /app/data ./data
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/data ./data
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 VOLUME ["/app/data"]
-
-USER nextjs
 
 EXPOSE 3000
 
