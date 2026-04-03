@@ -21,11 +21,11 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - onedrive-index-data:/app/data
+      - ./data:/app/data
     environment:
       OD_CLIENT_ID: ""
       OD_OBFUSCATED_CLIENT_SECRET: ""
-      NEXT_PUBLIC_SITE_TITLE: "My OneDrive"
+      NEXT_PUBLIC_SITE_TITLE: "OneDrive"
       OD_BASE_DIRECTORY: "/"
       OD_MAX_ITEMS: "100"
       NEXT_PUBLIC_SITE_FOOTER: 'Powered by <a href="https://github.com/spencerwooo/onedrive-vercel-index" target="_blank" rel="noopener noreferrer">onedrive-vercel-index</a>.'
@@ -33,9 +33,6 @@ services:
       NEXT_PUBLIC_SITE_EMAIL: ""
       NEXT_PUBLIC_SITE_LINKS: "[]"
       NEXT_PUBLIC_DATETIME_FORMAT: "YYYY-MM-DD HH:mm:ss"
-
-volumes:
-  onedrive-index-data:
 ```
 
 Start the service with:
