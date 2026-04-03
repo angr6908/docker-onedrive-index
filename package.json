@@ -1,0 +1,92 @@
+{
+  "name": "onedrive-vercel-index",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.14.1"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier 'src/**/*.{js,ts,jsx,tsx}' --write"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-brands-svg-icons": "^7.2.0",
+    "@fortawesome/free-regular-svg-icons": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.3.0",
+    "@headlessui/react": "^2.2.9",
+    "awesome-debounce-promise": "^2.1.0",
+    "axios": "^1.14.0",
+    "cors": "^2.8.6",
+    "crypto-js": "^4.2.0",
+    "csstype": "^3.2.3",
+    "dayjs": "^1.11.20",
+    "emoji-regex": "^10.6.0",
+    "jszip": "^3.10.1",
+    "katex": "^0.16.44",
+    "mpegts.js": "^1.8.0",
+    "next": "^16.2.2",
+    "nextjs-progressbar": "^0.0.16",
+    "plyr-react": "^6.0.0",
+    "preview-office-docs": "^1.0.2",
+    "react": "^19.2.4",
+    "react-async-hook": "^4.0.0",
+    "react-audio-player": "^0.17.0",
+    "react-cookie": "^8.1.0",
+    "react-copy-to-clipboard": "^5.1.1",
+    "react-dom": "^19.2.4",
+    "react-hot-toast": "^2.6.0",
+    "react-hotkeys-hook": "^5.2.4",
+    "react-markdown": "^10.1.0",
+    "react-reader": "^2.0.15",
+    "react-syntax-highlighter": "^16.1.1",
+    "react-use-system-theme": "^1.1.1",
+    "rehype-katex": "^7.0.1",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "swr": "^2.4.1",
+    "use-clipboard-copy": "^0.2.0",
+    "use-constant": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/cors": "^2.8.19",
+    "@types/crypto-js": "^4.2.2",
+    "@types/node": "25.5.2",
+    "@types/react": "19.2.14",
+    "@types/react-copy-to-clipboard": "^5.0.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "autoprefixer": "^10.4.27",
+    "eslint": "10.1.0",
+    "eslint-config-next": "16.2.2",
+    "eslint-config-prettier": "^10.1.8",
+    "playwright": "^1.59.1",
+    "postcss": "^8.5.8",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "tailwindcss": "^4.2.2",
+    "typescript": "6.0.2"
+  },
+  "prettier": {
+    "printWidth": 120,
+    "arrowParens": "avoid",
+    "singleQuote": true,
+    "semi": false,
+    "plugins": [
+      "prettier-plugin-tailwindcss"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "next",
+      "next/core-web-vitals",
+      "prettier"
+    ]
+  }
+}
