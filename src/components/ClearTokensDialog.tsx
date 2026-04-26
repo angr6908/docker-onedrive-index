@@ -65,13 +65,13 @@ export default function ClearTokensDialog({
 
               <div className="mt-8 flex items-center justify-end">
                 <button
-                  className="mr-3 inline-flex items-center justify-center space-x-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-400 focus:ring focus:ring-blue-300 focus:outline-none"
+                  className="mr-3 inline-flex items-center justify-center space-x-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-400"
                   onClick={onClose}
                 >
                   {'Cancel'}
                 </button>
                 <button
-                  className="inline-flex items-center justify-center space-x-2 rounded bg-red-500 px-4 py-2 text-white hover:bg-red-400 focus:ring focus:ring-red-300 focus:outline-none"
+                  className="inline-flex items-center justify-center space-x-2 rounded bg-red-500 px-4 py-2 text-white hover:bg-red-400"
                   onClick={onClear}
                 >
                   <FontAwesomeIcon icon={['far', 'trash-alt']} />

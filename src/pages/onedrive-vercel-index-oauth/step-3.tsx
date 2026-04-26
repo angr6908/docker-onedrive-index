@@ -133,7 +133,7 @@ export default function OAuthStep3({
             )}
             <div className="mt-6 mb-2 text-right">
               <button
-                className="rounded-lg bg-gradient-to-br from-red-500 to-orange-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 focus:ring-red-200 disabled:cursor-not-allowed disabled:grayscale dark:focus:ring-red-800"
+                className="rounded-lg bg-gradient-to-br from-red-500 to-orange-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl disabled:cursor-not-allowed disabled:grayscale"
                 onClick={() => {
                   router.push('/onedrive-vercel-index-oauth/step-1')
                 }}
@@ -178,10 +178,8 @@ export default function OAuthStep3({
 
             <div className="mt-6 mb-2 text-right">
               <button
-                className={`rounded-lg bg-gradient-to-br px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 ${
-                  storeTokenStatus === 'error'
-                    ? 'from-red-500 to-orange-400 focus:ring-red-200 dark:focus:ring-red-800'
-                    : 'from-green-500 to-teal-300 focus:ring-green-200 dark:focus:ring-green-800'
+                className={`rounded-lg bg-gradient-to-br px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl ${
+                  storeTokenStatus === 'error' ? 'from-red-500 to-orange-400' : 'from-green-500 to-teal-300'
                 }`}
                 onClick={sendAuthTokensToServer}
               >

@@ -33,18 +33,14 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
 
       <div className="flex items-center space-x-2">
         <input
-          className="flex-1 rounded border border-gray-600/10 p-2 font-mono focus:ring focus:ring-blue-300 focus:outline-none dark:bg-gray-600 dark:text-white dark:focus:ring-blue-700"
-          autoFocus
+          className="flex-1 rounded border border-gray-600/10 p-2 font-mono dark:bg-gray-600 dark:text-white"
           type="password"
           placeholder="************"
           value={token}
           onChange={e => setToken(e.target.value)}
           onKeyDown={e => ['Enter', 'NumpadEnter'].includes(e.key) && submit()}
         />
-        <button
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-500 focus:ring focus:ring-blue-400 focus:outline-none"
-          onClick={submit}
-        >
+        <button className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-500" onClick={submit}>
           <FontAwesomeIcon icon="arrow-right" />
         </button>
       </div>

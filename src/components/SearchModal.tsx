@@ -182,7 +182,7 @@ export default function SearchModal({
   setSearchOpen: Dispatch<SetStateAction<boolean>>
 }) {
   const { query, setQuery, results } = useDriveItemSearch()
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchFocusGuardRef = useRef<HTMLButtonElement>(null)
 
   const closeSearchBox = () => {
     setSearchOpen(false)
@@ -194,7 +194,7 @@ export default function SearchModal({
       <Dialog
         as="div"
         className="fixed inset-0 z-[200] overflow-y-auto"
-        initialFocus={searchInputRef}
+        initialFocus={searchFocusGuardRef}
         onClose={closeSearchBox}
       >
         <div className="relative min-h-screen px-4 text-center">
@@ -220,14 +220,20 @@ export default function SearchModal({
             leaveTo="opacity-0 scale-95"
           >
             <Dialog.Panel className="relative z-10 my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-xl transition-all">
+              <button
+                ref={searchFocusGuardRef}
+                type="button"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="fixed h-px w-px -translate-x-full overflow-hidden opacity-0"
+              />
               <Dialog.Title className="sr-only">Search</Dialog.Title>
               <div className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white">
                 <FontAwesomeIcon icon="search" className="h-4 w-4" />
                 <input
-                  ref={searchInputRef}
                   type="text"
                   id="search-box"
-                  className="min-w-0 flex-1 bg-transparent focus:outline-none focus-visible:outline-none"
+                  className="min-w-0 flex-1 bg-transparent"
                   placeholder={'Search ...'}
                   value={query}
                   onChange={e => setQuery(e.target.value)}

@@ -17,11 +17,13 @@ import { encodePath, runCorsMiddleware } from '../../utils/onedriveApi'
 
 const driveItemSelect = 'name,size,id,lastModifiedDateTime,folder,file,video,image'
 const fileItemSelect = `${driveItemSelect},@microsoft.graph.downloadUrl`
+const personalVaultFolderName = 'Personal Vault'
 const isLikelyFilePath = (path: string) => /\.[^/.]+$/.test(path.split('/').pop() ?? '')
 const shouldFallbackToIdentity = (error: unknown) => {
   if (!axios.isAxiosError(error)) return false
   return error.response?.status === 400 || error.response?.status === 404
 }
+const hidePersonalVaultFolder = (item: any) => !(item?.folder && item.name === personalVaultFolderName)
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // If method is POST, then the API is called by the client to store acquired tokens
@@ -90,7 +92,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const sendFolderData = (folderData: any) => {
     const nextPage = nextPageToken(folderData['@odata.nextLink'])
-    res.status(200).json({ folder: folderData, ...(nextPage ? { next: nextPage } : {}) })
+    const visibleFolderData =
+      isRoot && Array.isArray(folderData.value)
+        ? { ...folderData, value: folderData.value.filter(hidePersonalVaultFolder) }
+        : folderData
+
+    res.status(200).json({ folder: visibleFolderData, ...(nextPage ? { next: nextPage } : {}) })
   }
 
   // Go for file raw download link, add CORS headers, and redirect to @microsoft.graph.downloadUrl

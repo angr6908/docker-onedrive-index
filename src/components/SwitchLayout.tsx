@@ -58,7 +58,7 @@ const SwitchLayout = () => {
 
       {open && (
         <div
-          className="absolute right-0 z-20 mt-1 w-32 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-none dark:border-gray-500/30 dark:bg-gray-800"
+          className="absolute right-0 z-20 mt-1 w-32 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg dark:border-gray-500/30 dark:bg-gray-800"
           role="listbox"
         >
           {layouts.map(layout => {

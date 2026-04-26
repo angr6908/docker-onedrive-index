@@ -78,11 +78,12 @@ const FolderGridLayout = ({
 }: FolderLayoutProps) => {
   const hashedToken = getStoredToken(path)
   const baseUrl = getBaseUrl()
+  const itemCount = folderChildren.length
 
   return (
     <div className="rounded bg-white shadow-sm dark:bg-gray-900 dark:text-gray-100">
       <div className="flex items-center border-b border-gray-900/10 px-3 text-xs font-bold tracking-widest text-gray-600 uppercase dark:border-gray-500/30 dark:text-gray-400">
-        <div className="flex-1">{'{{count}} item(s)'}</div>
+        <div className="flex-1">{`${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}</div>
         <SelectedFilesControls
           className="flex p-1.5 text-gray-700 dark:text-gray-400"
           selectTitle={'Select all files'}

@@ -73,12 +73,9 @@ export default function OAuthStep2({
         </div>
 
         <input
-          className={`my-2 w-full flex-1 rounded border bg-gray-50 p-2 font-mono text-sm font-medium focus:ring focus:outline-none dark:bg-gray-800 dark:text-white ${
-            authCode
-              ? 'border-green-500/50 focus:ring-green-500/30 dark:focus:ring-green-500/40'
-              : 'border-red-500/50 focus:ring-red-500/30 dark:focus:ring-red-500/40'
+          className={`my-2 w-full flex-1 rounded border bg-gray-50 p-2 font-mono text-sm font-medium dark:bg-gray-800 dark:text-white ${
+            authCode ? 'border-green-500/50' : 'border-red-500/50'
           }`}
-          autoFocus
           type="text"
           placeholder="http://localhost/?code=M.R3_BAY.c0..."
           value={oAuthRedirectedUrl}
@@ -101,7 +98,7 @@ export default function OAuthStep2({
 
         <div className="mt-6 mb-2 text-right">
           <button
-            className="rounded-lg bg-gradient-to-br from-green-500 to-cyan-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 focus:ring-green-200 disabled:cursor-not-allowed disabled:grayscale dark:focus:ring-green-800"
+            className="rounded-lg bg-gradient-to-br from-green-500 to-cyan-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl disabled:cursor-not-allowed disabled:grayscale"
             disabled={authCode === ''}
             onClick={() => {
               setButtonLoading(true)

@@ -37,8 +37,7 @@ export default function CustomEmbedLinkMenu({
 }) {
   const hashedToken = getStoredToken(path)
 
-  // Focus on input automatically when menu modal opens
-  const focusInputRef = useRef<HTMLInputElement>(null)
+  const menuFocusGuardRef = useRef<HTMLButtonElement>(null)
   const closeMenu = () => setMenuOpen(false)
 
   const readablePath = getReadablePath(path)
@@ -47,7 +46,12 @@ export default function CustomEmbedLinkMenu({
 
   return (
     <Transition appear show={menuOpen} as={Fragment}>
-      <Dialog as="div" className="fixed inset-0 z-10 overflow-y-auto" onClose={closeMenu} initialFocus={focusInputRef}>
+      <Dialog
+        as="div"
+        className="fixed inset-0 z-10 overflow-y-auto"
+        onClose={closeMenu}
+        initialFocus={menuFocusGuardRef}
+      >
         <div className="min-h-screen px-4 text-center">
           <Transition.Child
             as={Fragment}
@@ -75,6 +79,13 @@ export default function CustomEmbedLinkMenu({
             leaveTo="opacity-0 scale-95"
           >
             <div className="inline-block max-h-[80vh] w-full max-w-3xl transform overflow-hidden overflow-y-scroll rounded border border-gray-400/30 bg-white p-4 text-left align-middle text-sm shadow-xl transition-all dark:bg-gray-900 dark:text-white">
+              <button
+                ref={menuFocusGuardRef}
+                type="button"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="fixed h-px w-px -translate-x-full overflow-hidden opacity-0"
+              />
               <Dialog.Title as="h3" className="py-2 text-xl font-bold">
                 {'Customise direct link'}
               </Dialog.Title>
@@ -95,8 +106,7 @@ export default function CustomEmbedLinkMenu({
               <div className="mt-4">
                 <h4 className="py-2 text-xs font-medium tracking-wider uppercase">{'Filename'}</h4>
                 <input
-                  className="mb-2 w-full rounded border border-gray-600/10 p-2.5 font-mono focus:ring focus:ring-blue-300 focus:outline-none dark:bg-gray-600 dark:text-white dark:focus:ring-blue-700"
-                  ref={focusInputRef}
+                  className="mb-2 w-full rounded border border-gray-600/10 p-2.5 font-mono dark:bg-gray-600 dark:text-white"
                   value={name}
                   onChange={e => setName(e.target.value)}
                 />

@@ -23,10 +23,7 @@ export function DownloadingToast({ router, progress }: { router: NextRouter; pro
           </div>
         </div>
       </div>
-      <button
-        className="rounded bg-red-500 p-2 text-white hover:bg-red-400 focus:ring focus:ring-red-300 focus:outline-none"
-        onClick={() => router.reload()}
-      >
+      <button className="rounded bg-red-500 p-2 text-white hover:bg-red-400" onClick={() => router.reload()}>
         {'Cancel'}
       </button>
     </div>
