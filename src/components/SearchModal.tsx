@@ -1,6 +1,6 @@
 import axios from 'axios'
-import useSWR, { SWRResponse } from 'swr'
-import { Dispatch, Fragment, SetStateAction, useState } from 'react'
+import useSWR from 'swr'
+import { Fragment, useRef, useState } from 'react'
 import AwesomeDebouncePromise from 'awesome-debounce-promise'
 import { useAsync } from 'react-async-hook'
 import useConstant from 'use-constant'
@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { FontAwesomeIcon } from '../utils/fontawesome'
 import { Dialog, Transition } from '@headlessui/react'
 
+import type { Dispatch, SetStateAction } from 'react'
+import type { SWRResponse } from 'swr'
 import type { OdDriveItem, OdSearchResult } from '../types'
 import { LoadingIcon } from './Loading'
 
@@ -16,21 +18,13 @@ import { getFileIcon } from '../utils/getFileIcon'
 import { fetcher } from '../utils/fetchWithSWR'
 import { getPublicRuntimeConfig } from '../utils/publicRuntimeConfig'
 
-/**
- * Extract the searched item's path in field 'parentReference' and convert it to the
- * absolute path represented in onedrive-vercel-index
- *
- * @param path Path returned from the parentReference field of the driveItem
- * @returns The absolute path of the driveItem in the search result
- */
+type SearchItem = OdSearchResult[number]
+type SearchState = ReturnType<typeof useDriveItemSearch>['results']
+
 function mapAbsolutePath(path: string): string {
   const siteConfig = getPublicRuntimeConfig()
-  // path is in the format of '/drive/root:/path/to/file', if baseDirectory is '/' then we split on 'root:',
-  // otherwise we split on the user defined 'baseDirectory'
   const [, absolutePath = ''] = path.split(siteConfig.baseDirectory === '/' ? 'root:' : siteConfig.baseDirectory)
-  // path returned by the API may contain #, by doing a decodeURIComponent and then encodeURIComponent we can
-  // replace URL sensitive characters such as the # with %23
-  return absolutePath // solve https://github.com/spencerwooo/onedrive-vercel-index/issues/539
+  return absolutePath
     ? absolutePath
         .split('/')
         .map(p => encodeURIComponent(decodeURIComponent(p)))
@@ -38,21 +32,15 @@ function mapAbsolutePath(path: string): string {
     : ''
 }
 
-/**
- * Implements a debounced search function that returns a promise that resolves to an array of
- * search results.
- *
- * @returns A react hook for a debounced async search of the drive
- */
 function useDriveItemSearch() {
   const [query, setQuery] = useState('')
   const searchDriveItem = async (q: string) => {
-    const { data } = await axios.get<OdSearchResult>(`/api/search/?q=${q}`)
+    const { data } = await axios.get<OdSearchResult>('/api/search/', { params: { q: q.trim() } })
 
     return data.map(item => ({
       ...item,
       path:
-        'path' in item.parentReference
+        typeof item.parentReference?.path === 'string'
           ? `${mapAbsolutePath(item.parentReference.path)}/${encodeURIComponent(item.name)}`
           : '',
     }))
@@ -60,90 +48,129 @@ function useDriveItemSearch() {
 
   const debouncedDriveItemSearch = useConstant(() => AwesomeDebouncePromise(searchDriveItem, 1000))
   const results = useAsync(async () => {
-    return query.length === 0 ? [] : debouncedDriveItemSearch(query)
+    return query.trim().length === 0 ? [] : debouncedDriveItemSearch(query)
   }, [query])
 
-  return {
-    query,
-    setQuery,
-    results,
-  }
+  return { query, setQuery, results }
 }
 
-function SearchResultItemTemplate({
-  driveItem,
+function SearchResultRow({
+  item,
   driveItemPath,
-  itemDescription,
+  description,
   disabled,
+  onSelect,
 }: {
-  driveItem: OdSearchResult[number]
+  item: SearchItem
   driveItemPath: string
-  itemDescription: string
+  description: string
   disabled: boolean
+  onSelect?: () => void
 }) {
-  return (
-    <Link
-      href={driveItemPath}
-      passHref
-      prefetch={false}
-      className={`dark:hover:bg-gray-850 flex items-center space-x-4 border-b border-gray-400/30 px-4 py-1.5 hover:bg-gray-50 ${
-        disabled ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
-      }`}
-    >
-      <FontAwesomeIcon icon={driveItem.file ? getFileIcon(driveItem.name) : ['far', 'folder']} />
-      <div>
-        <div className="text-sm leading-8 font-medium">{driveItem.name}</div>
+  const baseClassName = 'flex w-full items-center gap-4 border-b border-gray-400/30 px-4 py-1.5 text-left'
+  const stateClassName = disabled
+    ? 'cursor-not-allowed opacity-70'
+    : 'dark:hover:bg-gray-850 cursor-pointer hover:bg-gray-50'
+  const className = `${baseClassName} ${stateClassName}`
+  const content = (
+    <>
+      <FontAwesomeIcon className="h-4 w-4 flex-none" icon={item.file ? getFileIcon(item.name) : ['far', 'folder']} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm leading-8 font-medium">{item.name}</div>
         <div
-          className={`truncate overflow-hidden font-mono text-xs opacity-60 ${
-            itemDescription === 'Loading ...' ? 'animate-pulse' : ''
-          }`}
+          className={`truncate font-mono text-xs opacity-60 ${description === 'Loading ...' ? 'animate-pulse' : ''}`}
         >
-          {itemDescription}
+          {description}
         </div>
       </div>
+    </>
+  )
+
+  if (disabled) {
+    return <div className={className}>{content}</div>
+  }
+
+  return (
+    <Link href={driveItemPath} passHref prefetch={false} className={className} onClick={onSelect}>
+      {content}
     </Link>
   )
 }
 
-function SearchResultItemLoadRemote({ result }: { result: OdSearchResult[number] }) {
+function SearchResultItemLoadRemote({ item, onSelect }: { item: SearchItem; onSelect: () => void }) {
   const { data, error }: SWRResponse<OdDriveItem, { status: number; message: any }> = useSWR(
-    [`/api/item/?id=${result.id}`],
+    [`/api/item/?id=${item.id}`],
     fetcher,
   )
 
   if (error) {
     const message = typeof error.message?.error === 'string' ? error.message.error : JSON.stringify(error.message)
-
-    return <SearchResultItemTemplate driveItem={result} driveItemPath={''} itemDescription={message} disabled />
+    return <SearchResultRow item={item} driveItemPath="" description={message} disabled />
   }
+
   if (!data) {
-    return <SearchResultItemTemplate driveItem={result} driveItemPath={''} itemDescription={'Loading ...'} disabled />
+    return <SearchResultRow item={item} driveItemPath="" description="Loading ..." disabled />
   }
 
   const driveItemPath = `${mapAbsolutePath(data.parentReference.path)}/${encodeURIComponent(data.name)}`
   return (
-    <SearchResultItemTemplate
-      driveItem={result}
+    <SearchResultRow
+      item={item}
       driveItemPath={driveItemPath}
-      itemDescription={decodeURIComponent(driveItemPath)}
+      description={decodeURIComponent(driveItemPath)}
       disabled={false}
+      onSelect={onSelect}
     />
   )
 }
 
-function SearchResultItem({ result }: { result: OdSearchResult[number] }) {
-  if (result.path === '') {
-    return <SearchResultItemLoadRemote result={result} />
+function SearchResultItem({ item, onSelect }: { item: SearchItem; onSelect: () => void }) {
+  if (item.path === '') {
+    return <SearchResultItemLoadRemote item={item} onSelect={onSelect} />
   }
 
-  const driveItemPath = decodeURIComponent(result.path)
+  const driveItemPath = decodeURIComponent(item.path)
   return (
-    <SearchResultItemTemplate
-      driveItem={result}
-      driveItemPath={result.path}
-      itemDescription={driveItemPath}
+    <SearchResultRow
+      item={item}
+      driveItemPath={item.path}
+      description={driveItemPath}
       disabled={false}
+      onSelect={onSelect}
     />
+  )
+}
+
+function SearchResults({ query, results, onSelect }: { query: string; results: SearchState; onSelect: () => void }) {
+  if (query.trim().length === 0) return null
+
+  if (results.loading) {
+    return (
+      <div className="px-4 py-12 text-center text-sm font-medium">
+        <LoadingIcon className="svg-inline--fa mr-2 inline-block h-4 w-4 animate-spin" />
+        <span>{'Loading ...'}</span>
+      </div>
+    )
+  }
+
+  if (results.error) {
+    return (
+      <div className="px-4 py-12 text-center text-sm font-medium">
+        {`Error: ${results.error.message ?? 'Search failed.'}`}
+      </div>
+    )
+  }
+
+  if (!results.result || results.result.length === 0) {
+    return <div className="px-4 py-12 text-center text-sm font-medium">{'Nothing here.'}</div>
+  }
+
+  return (
+    <>
+      {results.result.map(item => (
+        <SearchResultItem key={item.id} item={item} onSelect={onSelect} />
+      ))}
+    </>
   )
 }
 
@@ -155,6 +182,7 @@ export default function SearchModal({
   setSearchOpen: Dispatch<SetStateAction<boolean>>
 }) {
   const { query, setQuery, results } = useDriveItemSearch()
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const closeSearchBox = () => {
     setSearchOpen(false)
@@ -163,8 +191,13 @@ export default function SearchModal({
 
   return (
     <Transition appear show={searchOpen} as={Fragment}>
-      <Dialog as="div" className="fixed inset-0 z-[200] overflow-y-auto" onClose={closeSearchBox}>
-        <div className="min-h-screen px-4 text-center">
+      <Dialog
+        as="div"
+        className="fixed inset-0 z-[200] overflow-y-auto"
+        initialFocus={searchInputRef}
+        onClose={closeSearchBox}
+      >
+        <div className="relative min-h-screen px-4 text-center">
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-100"
@@ -174,7 +207,7 @@ export default function SearchModal({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-white/80 dark:bg-gray-800/80" />
+            <div className="fixed inset-0 z-0 bg-white/80 dark:bg-gray-800/80" />
           </Transition.Child>
 
           <Transition.Child
@@ -186,46 +219,27 @@ export default function SearchModal({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <div className="my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-xl transition-all">
-              <Dialog.Title
-                as="h3"
-                className="flex items-center space-x-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white"
-              >
+            <Dialog.Panel className="relative z-10 my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-xl transition-all">
+              <Dialog.Title className="sr-only">Search</Dialog.Title>
+              <div className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white">
                 <FontAwesomeIcon icon="search" className="h-4 w-4" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   id="search-box"
-                  className="w-full bg-transparent focus:outline-none focus-visible:outline-none"
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none focus-visible:outline-none"
                   placeholder={'Search ...'}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                 />
-                <div className="rounded-lg bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-700">ESC</div>
-              </Dialog.Title>
-              <div
-                className="max-h-[80vh] overflow-x-hidden overflow-y-scroll bg-white dark:bg-gray-900 dark:text-white"
-                onClick={closeSearchBox}
-              >
-                {results.loading && (
-                  <div className="px-4 py-12 text-center text-sm font-medium">
-                    <LoadingIcon className="svg-inline--fa mr-2 inline-block h-4 w-4 animate-spin" />
-                    <span>{'Loading ...'}</span>
-                  </div>
-                )}
-                {results.error && (
-                  <div className="px-4 py-12 text-center text-sm font-medium">{'Error: {{message}}'}</div>
-                )}
-                {results.result && (
-                  <>
-                    {results.result.length === 0 ? (
-                      <div className="px-4 py-12 text-center text-sm font-medium">{'Nothing here.'}</div>
-                    ) : (
-                      results.result.map(result => <SearchResultItem key={result.id} result={result} />)
-                    )}
-                  </>
-                )}
+                <div className="flex-none rounded-lg bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-700">
+                  ESC
+                </div>
               </div>
-            </div>
+              <div className="max-h-[80vh] overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 dark:text-white">
+                <SearchResults query={query} results={results} onSelect={closeSearchBox} />
+              </div>
+            </Dialog.Panel>
           </Transition.Child>
         </div>
       </Dialog>

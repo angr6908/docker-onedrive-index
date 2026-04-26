@@ -1,44 +1,24 @@
-# syntax=docker/dockerfile:1.7
-
-ARG BUN_IMAGE=oven/bun:1-alpine
-
-FROM ${BUN_IMAGE} AS deps
+FROM oven/bun:alpine AS deps
 WORKDIR /app
-
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json bun.lock ./
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-  bun install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
-FROM ${BUN_IMAGE} AS builder
+FROM oven/bun:alpine AS build
 WORKDIR /app
-
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json bun.lock next.config.js postcss.config.js tailwind.config.js tsconfig.json next-env.d.ts ./
-COPY config ./config
-COPY public ./public
-COPY src ./src
-
+COPY . .
 RUN bun run build
 
-FROM ${BUN_IMAGE} AS runner
+FROM alpine:latest
 WORKDIR /app
-
-ENV NODE_ENV=production \
-  NEXT_TELEMETRY_DISABLED=1 \
-  HOSTNAME=0.0.0.0 \
-  PORT=3000
-
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/config ./config
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-RUN mkdir -p /app/data
-
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
+RUN apk add --no-cache nodejs && mkdir -p /app/data
+COPY --from=build /app/public ./public
+COPY --from=build /app/config ./config
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
 VOLUME ["/app/data"]
-
 EXPOSE 3000
-
-CMD ["bun", "server.js"]
+CMD ["node", "server.js"]
