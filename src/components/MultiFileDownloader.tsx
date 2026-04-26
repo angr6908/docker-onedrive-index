@@ -1,8 +1,8 @@
 import { NextRouter } from 'next/router'
 import toast from 'react-hot-toast'
-import JSZip from 'jszip'
 
 import { fetcher } from '../utils/fetchWithSWR'
+import { getItemPath } from '../utils/drivePath'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 
 /**
@@ -12,7 +12,6 @@ import { getStoredToken } from '../utils/protectedRouteHandler'
  * @param props.progress Current downloading and compression progress (returned by jszip metadata)
  */
 export function DownloadingToast({ router, progress }: { router: NextRouter; progress?: string }) {
-  
   return (
     <div className="flex items-center space-x-2">
       <div className="w-56">
@@ -25,7 +24,7 @@ export function DownloadingToast({ router, progress }: { router: NextRouter; pro
         </div>
       </div>
       <button
-        className="rounded bg-red-500 p-2 text-white hover:bg-red-400 focus:outline-none focus:ring focus:ring-red-300"
+        className="rounded bg-red-500 p-2 text-white hover:bg-red-400 focus:ring focus:ring-red-300 focus:outline-none"
         onClick={() => router.reload()}
       >
         {'Cancel'}
@@ -34,21 +33,27 @@ export function DownloadingToast({ router, progress }: { router: NextRouter; pro
   )
 }
 
-// Blob download helper
-export function downloadBlob({ blob, name }: { blob: Blob; name: string }) {
-  // Prepare for download
+export function downloadUrl(url: string, name?: string) {
   const el = document.createElement('a')
   el.style.display = 'none'
   document.body.appendChild(el)
-
-  // Download zip file
-  const bUrl = window.URL.createObjectURL(blob)
-  el.href = bUrl
-  el.download = name
+  el.href = url
+  if (name) el.download = name
   el.click()
-  window.URL.revokeObjectURL(bUrl)
   el.remove()
 }
+
+export function downloadBlob({ blob, name }: { blob: Blob; name: string }) {
+  const bUrl = window.URL.createObjectURL(blob)
+  downloadUrl(bUrl, name)
+  window.URL.revokeObjectURL(bUrl)
+}
+
+const zipName = (folder?: string) => (folder ? folder + '.zip' : 'download.zip')
+const updateProgress = (toastId: string, router: NextRouter) => (metadata: { percent: number }) => {
+  toast.loading(<DownloadingToast router={router} progress={metadata.percent.toFixed(0)} />, { id: toastId })
+}
+const createZip = async () => new (await import('jszip')).default()
 
 /**
  * Download multiple files after compressing them into a zip
@@ -67,26 +72,18 @@ export async function downloadMultipleFiles({
   files: { name: string; url: string }[]
   folder?: string
 }): Promise<void> {
-  const zip = new JSZip()
+  const zip = await createZip()
   const dir = folder ? zip.folder(folder)! : zip
 
-  // Add selected file blobs to zip
   files.forEach(({ name, url }) => {
     dir.file(
       name,
-      fetch(url).then(r => {
-        return r.blob()
-      })
+      fetch(url).then(r => r.blob()),
     )
   })
 
-  // Create zip file and download it
-  const b = await zip.generateAsync({ type: 'blob' }, metadata => {
-    toast.loading(<DownloadingToast router={router} progress={metadata.percent.toFixed(0)} />, {
-      id: toastId,
-    })
-  })
-  downloadBlob({ blob: b, name: folder ? folder + '.zip' : 'download.zip' })
+  const b = await zip.generateAsync({ type: 'blob' }, updateProgress(toastId, router))
+  downloadBlob({ blob: b, name: zipName(folder) })
 }
 
 /**
@@ -118,7 +115,7 @@ export async function downloadTreelikeMultipleFiles({
   basePath: string
   folder?: string
 }): Promise<void> {
-  const zip = new JSZip()
+  const zip = await createZip()
   const root = folder ? zip.folder(folder)! : zip
   const map = [{ path: basePath, dir: root }]
 
@@ -128,10 +125,7 @@ export async function downloadTreelikeMultipleFiles({
     const i = map
       .slice()
       .reverse()
-      .findIndex(
-        ({ path: parent }) =>
-          path.substring(0, parent.length) === parent && path.substring(parent.length + 1).indexOf('/') === -1
-      )
+      .findIndex(({ path: parent }) => isDirectChild(parent, path))
     if (i === -1) {
       throw new Error('File array does not satisfy requirement')
     }
@@ -143,18 +137,14 @@ export async function downloadTreelikeMultipleFiles({
     } else {
       dir.file(
         name,
-        fetch(url!).then(r => r.blob())
+        fetch(url!).then(r => r.blob()),
       )
     }
   }
 
   // Create zip file and download it
-  const b = await zip.generateAsync({ type: 'blob' }, metadata => {
-    toast.loading(<DownloadingToast router={router} progress={metadata.percent.toFixed(0)} />, {
-      id: toastId,
-    })
-  })
-  downloadBlob({ blob: b, name: folder ? folder + '.zip' : 'download.zip' })
+  const b = await zip.generateAsync({ type: 'blob' }, updateProgress(toastId, router))
+  downloadBlob({ blob: b, name: zipName(folder) })
 }
 
 interface TraverseItem {
@@ -163,6 +153,9 @@ interface TraverseItem {
   isFolder: boolean
   error?: { status: number; message: string }
 }
+
+const isDirectChild = (parent: string, child: string) =>
+  child.substring(0, parent.length) === parent && child.substring(parent.length + 1).indexOf('/') === -1
 
 /**
  * One-shot concurrent top-down file traversing for the folder.
@@ -194,16 +187,16 @@ export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem
   }
 
   // Pool containing Promises of folder requests
-  let pool = [genTask(0, path)]
+  const pool = [genTask(0, path)]
+  const activeTasks = () => pool.filter(Boolean)
 
   // Map as item buffer for folders with pagination
   const buf: { [k: string]: TraverseItem[] } = {}
 
-  // filter(() => true) removes gaps in the array
-  while (pool.filter(() => true).length > 0) {
+  while (activeTasks().length > 0) {
     let info: { i: number; path: string; data: any }
     try {
-      info = await Promise.race(pool.filter(() => true))
+      info = await Promise.race(activeTasks())
     } catch (error: any) {
       const { i, path, error: innerError } = error
       // 4xx errors are identified as handleable errors
@@ -227,10 +220,11 @@ export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem
     }
     delete pool[i]
 
-    const items = data.folder.value.map((c: any) => {
-      const p = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
-      return { path: p, meta: c, isFolder: Boolean(c.folder) }
-    }) as TraverseItem[]
+    const items = data.folder.value.map((c: any) => ({
+      path: getItemPath(path, c.name),
+      meta: c,
+      isFolder: Boolean(c.folder),
+    })) as TraverseItem[]
 
     if (data.next) {
       buf[path] = (buf[path] ?? []).concat(items)

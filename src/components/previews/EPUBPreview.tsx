@@ -7,6 +7,7 @@ import { useRouter } from 'next/router'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer } from './Containers'
+import { directFileUrl } from '../../utils/odUrls'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 const EPUBPreview: FC<{ file: OdFileObject }> = ({ file }) => {
@@ -17,13 +18,12 @@ const EPUBPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const epubContainer = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setEpubContainerWidth(epubContainer.current ? epubContainer.current.offsetWidth : 400)
+    setEpubContainerWidth(epubContainer.current?.offsetWidth ?? 400)
   }, [])
 
   const [location, setLocation] = useState<string | number | null>(null)
   const onLocationChange = (cfiStr: string) => setLocation(cfiStr)
 
-  
   // Fix for not valid epub files according to
   // https://github.com/gerhardsletten/react-reader/issues/33#issuecomment-673964947
   const fixEpub = rendition => {
@@ -42,7 +42,7 @@ const EPUBPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   return (
     <div>
       <div
-        className="no-scrollbar flex w-full flex-col overflow-scroll rounded bg-white dark:bg-gray-900 md:p-3"
+        className="no-scrollbar flex w-full flex-col overflow-scroll rounded bg-white md:p-3 dark:bg-gray-900"
         style={{ maxHeight: '90vh' }}
       >
         <div className="no-scrollbar w-full flex-1 overflow-scroll" ref={epubContainer} style={{ minHeight: '70vh' }}>
@@ -54,8 +54,8 @@ const EPUBPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             }}
           >
             <ReactReader
-              url={`/api/raw/?path=${asPath}${hashedToken ? '&odpt=' + hashedToken : ''}`}
-              getRendition={rendition => fixEpub(rendition)}
+              url={directFileUrl(file, asPath, hashedToken)}
+              getRendition={fixEpub}
               loadingView={<Loading loadingText={'Loading EPUB ...'} />}
               location={location}
               locationChanged={onLocationChange}

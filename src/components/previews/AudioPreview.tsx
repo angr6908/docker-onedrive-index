@@ -2,13 +2,14 @@ import type { OdFileObject } from '../../types'
 import { FC, useEffect, useRef, useState } from 'react'
 
 import ReactAudioPlayer from 'react-audio-player'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '../../utils/fontawesome'
 import { useRouter } from 'next/router'
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 import { LoadingIcon } from '../Loading'
 import { formatModifiedDateTime } from '../../utils/fileDetails'
+import { directFileUrl, thumbnailUrl } from '../../utils/odUrls'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 enum PlayerState {
@@ -19,7 +20,7 @@ enum PlayerState {
 }
 
 const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
-    const { asPath } = useRouter()
+  const { asPath } = useRouter()
   const hashedToken = getStoredToken(asPath)
 
   const rapRef = useRef<ReactAudioPlayer>(null)
@@ -27,7 +28,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const [playerVolume, setPlayerVolume] = useState(1)
 
   // Render audio thumbnail, and also check for broken thumbnails
-  const thumbnail = `/api/thumbnail/?path=${asPath}&size=medium${hashedToken ? `&odpt=${hashedToken}` : ''}`
+  const thumbnail = thumbnailUrl(asPath, 'medium', hashedToken)
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
 
   useEffect(() => {
@@ -52,7 +53,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
     <>
       <PreviewContainer>
         <div className="flex flex-col space-y-4 md:flex-row md:space-x-4">
-          <div className="relative flex aspect-square w-full items-center justify-center rounded bg-gray-100 transition-all duration-75 dark:bg-gray-700 md:w-48">
+          <div className="relative flex aspect-square w-full items-center justify-center rounded bg-gray-100 transition-all duration-75 md:w-48 dark:bg-gray-700">
             <div
               className={`absolute z-20 flex h-full w-full items-center justify-center transition-all duration-300 ${
                 playerStatus === PlayerState.Loading
@@ -72,6 +73,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
                   }`}
                   src={thumbnail}
                   alt={file.name}
+                  decoding="async"
                   onError={() => setBrokenThumbnail(true)}
                 />
               </div>
@@ -94,7 +96,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
 
             <ReactAudioPlayer
               className="h-11 w-full"
-              src={`/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+              src={directFileUrl(file, asPath, hashedToken)}
               ref={rapRef}
               controls
               preload="auto"

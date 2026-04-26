@@ -1,48 +1,44 @@
-FROM node:24.14.1-alpine AS base
+# syntax=docker/dockerfile:1.7
 
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
+ARG BUN_IMAGE=oven/bun:1-alpine
 
-RUN apk add --no-cache libc6-compat \
-  && corepack enable
-
+FROM ${BUN_IMAGE} AS deps
 WORKDIR /app
 
-FROM base AS deps
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY package.json bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+  bun install --frozen-lockfile
 
-COPY package.json pnpm-lock.yaml .npmrc ./
-RUN pnpm install --frozen-lockfile
+FROM ${BUN_IMAGE} AS builder
+WORKDIR /app
 
-FROM base AS builder
-
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY package.json bun.lock next.config.js postcss.config.js tailwind.config.js tsconfig.json next-env.d.ts ./
+COPY config ./config
+COPY public ./public
+COPY src ./src
 
-RUN pnpm build \
-  && mkdir -p /app/data
+RUN bun run build
 
-FROM alpine:latest AS runner
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3000
-
+FROM ${BUN_IMAGE} AS runner
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat libstdc++ \
-  && true
+ENV NODE_ENV=production \
+  NEXT_TELEMETRY_DISABLED=1 \
+  HOSTNAME=0.0.0.0 \
+  PORT=3000
 
-COPY --from=base /usr/local/bin/node /usr/local/bin/node
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/config ./config
-COPY --from=builder /app/data ./data
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+RUN mkdir -p /app/data
 
 VOLUME ["/app/data"]
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["bun", "server.js"]

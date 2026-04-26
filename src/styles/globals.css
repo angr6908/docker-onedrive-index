@@ -1,6 +1,18 @@
-@import "tailwindcss";
-@config "../../tailwind.config.js";
-@source "../**/*.{js,ts,jsx,tsx}";
+@import 'tailwindcss';
+@config '../../tailwind.config.js';
+@source '../**/*.{js,ts,jsx,tsx}';
+
+@layer base {
+  html,
+  body,
+  #__next {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 dark:bg-gray-800;
+  }
+}
 
 @layer utilities {
   /* Chrome, Safari and Opera */
@@ -31,5 +43,6 @@
 }
 pre[class*='language-'],
 code[class*='language-'] {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace !important;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace !important;
 }

@@ -11,6 +11,7 @@ import { useClipboard } from 'use-clipboard-copy'
 
 import { getBaseUrl } from '../../utils/getBaseUrl'
 import { getExtension } from '../../utils/getFileIcon'
+import { directFileUrl, rawFileUrl, thumbnailUrl } from '../../utils/odUrls'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 import { DownloadButton } from '../DownloadBtnGtoup'
@@ -48,33 +49,26 @@ const VideoPlayer: FC<{
       })
 
     if (isFlv) {
-      const loadFlv = () => {
-        // Really hacky way to get the exposed video element from Plyr
-        const video = document.getElementById('plyr')
-        const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
-        flv.attachMediaElement(video)
-        flv.load()
-      }
-      loadFlv()
+      // Really hacky way to get the exposed video element from Plyr
+      const video = document.getElementById('plyr')
+      const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
+      flv.attachMediaElement(video)
+      flv.load()
     }
   }, [videoUrl, isFlv, mpegts, subtitle])
 
-  // Common plyr configs, including the video source and plyr options
   const plyrSource: any = {
     type: 'video',
     title: videoName,
     poster: thumbnail,
     tracks: [{ kind: 'captions', label: videoName, src: '', default: true }],
-    sources: [],
+    sources: isFlv ? [] : [{ src: videoUrl }],
   }
   const plyrOptions = {
     ratio: `${width ?? 16}:${height ?? 9}`,
     fullscreen: { iosNative: true },
   }
-  if (!isFlv) {
-    // If the video is not in flv format, we can use the native plyr and add sources directly with the video URL
-    plyrSource['sources'] = [{ src: videoUrl }]
-  }
+
   return <Plyr id="plyr" source={plyrSource} options={plyrOptions} />
 }
 
@@ -84,16 +78,17 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const clipboard = useClipboard()
 
   const [menuOpen, setMenuOpen] = useState(false)
-  
+
   // OneDrive generates thumbnails for its video files, we pick the thumbnail with the highest resolution
-  const thumbnail = `/api/thumbnail/?path=${asPath}&size=large${hashedToken ? `&odpt=${hashedToken}` : ''}`
+  const thumbnail = thumbnailUrl(asPath, 'large', hashedToken)
 
   // We assume subtitle files are beside the video with the same name, only webvtt '.vtt' files are supported
   const vtt = `${asPath.substring(0, asPath.lastIndexOf('.'))}.vtt`
-  const subtitle = `/api/raw/?path=${vtt}${hashedToken ? `&odpt=${hashedToken}` : ''}`
+  const subtitle = rawFileUrl(vtt, hashedToken)
 
   // We also format the raw video file for the in-browser player as well as all other players
-  const videoUrl = `/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`
+  const videoUrl = rawFileUrl(asPath, hashedToken)
+  const playbackUrl = directFileUrl(file, asPath, hashedToken)
 
   const isFlv = getExtension(file.name) === 'flv'
   const {
@@ -117,7 +112,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
         ) : (
           <VideoPlayer
             videoName={file.name}
-            videoUrl={videoUrl}
+            videoUrl={playbackUrl}
             width={file.video?.width}
             height={file.video?.height}
             thumbnail={thumbnail}
@@ -138,7 +133,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           />
           <DownloadButton
             onClickCallback={() => {
-              clipboard.copy(`${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
+              clipboard.copy(rawFileUrl(asPath, hashedToken, getBaseUrl()))
               toast.success('Copied direct link to clipboard.')
             }}
             btnColor="pink"

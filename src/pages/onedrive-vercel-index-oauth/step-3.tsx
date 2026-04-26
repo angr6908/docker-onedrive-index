@@ -1,17 +1,46 @@
-import Head from 'next/head'
 import { GetServerSideProps } from 'next'
-import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '../../utils/fontawesome'
 
-import Navbar from '../../components/Navbar'
-import Footer from '../../components/Footer'
+import OAuthCard from '../../components/OAuthCard'
+import PageLayout from '../../components/PageLayout'
 
 import { requestTokenWithAuthCode, sendTokenToServer } from '../../utils/oAuthHandler'
 import { LoadingIcon } from '../../components/Loading'
 import { getServerSidePublicConfigProps } from '../../utils/getServerSidePublicConfigProps'
 import { PublicRuntimeConfig } from '../../utils/publicRuntimeConfig'
+
+type StoreTokenStatus = 'idle' | 'loading' | 'stored' | 'error'
+
+const storeTokenButtonContent = (status: StoreTokenStatus) => {
+  switch (status) {
+    case 'loading':
+      return (
+        <div>
+          <span>Storing tokens</span> <LoadingIcon className="ml-1 inline h-4 w-4 animate-spin" />
+        </div>
+      )
+    case 'stored':
+      return (
+        <div>
+          <span>Stored! Going home...</span> <FontAwesomeIcon icon="check" />
+        </div>
+      )
+    case 'error':
+      return (
+        <div>
+          <span>Error storing the token</span> <FontAwesomeIcon icon="exclamation-circle" />
+        </div>
+      )
+    default:
+      return (
+        <div>
+          <span>Store tokens</span> <FontAwesomeIcon icon="key" />
+        </div>
+      )
+  }
+}
 
 export default function OAuthStep3({
   accessToken,
@@ -35,171 +64,134 @@ export default function OAuthStep3({
   const remainingExpiryTime = expiryTimeLeft ?? 0
 
   useEffect(() => {
-    if (!expiryTimeLeft) return
+    if (!expiryTime) return
 
     const intervalId = setInterval(() => {
-      setExpiryTimeLeft(expiryTimeLeft - 1)
+      setExpiryTimeLeft(timeLeft => {
+        if (!timeLeft || timeLeft <= 1) {
+          clearInterval(intervalId)
+          return 0
+        }
+
+        return timeLeft - 1
+      })
     }, 1000)
 
     return () => clearInterval(intervalId)
-  }, [expiryTimeLeft])
+  }, [expiryTime])
 
-  const [buttonContent, setButtonContent] = useState(
-    <div>
-      <span>Store tokens</span> <FontAwesomeIcon icon="key" />
-    </div>
-  )
-  const [buttonError, setButtonError] = useState(false)
+  const [storeTokenStatus, setStoreTokenStatus] = useState<StoreTokenStatus>('idle')
 
   const sendAuthTokensToServer = async () => {
     if (!accessToken || !refreshToken || !expiryTime) {
       return
     }
 
-    setButtonError(false)
-    setButtonContent(
-      <div>
-        <span>Storing tokens</span> <LoadingIcon className="ml-1 inline h-4 w-4 animate-spin" />
-      </div>
-    )
+    setStoreTokenStatus('loading')
 
-    await sendTokenToServer(accessToken, refreshToken, expiryTime)
-      .then(() => {
-        setButtonError(false)
-        setButtonContent(
-          <div>
-            <span>Stored! Going home...</span> <FontAwesomeIcon icon="check" />
-          </div>
-        )
-        setTimeout(() => {
-          router.push('/')
-        }, 2000)
-      })
-      .catch(_ => {
-        setButtonError(true)
-        setButtonContent(
-          <div>
-            <span>Error storing the token</span> <FontAwesomeIcon icon="exclamation-circle" />
-          </div>
-        )
-      })
+    try {
+      await sendTokenToServer(accessToken, refreshToken, expiryTime)
+      setStoreTokenStatus('stored')
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
+    } catch {
+      setStoreTokenStatus('error')
+    }
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white dark:bg-gray-900">
-      <Head>
-        <title>{`OAuth Step 3 - ${publicConfig.title}`}</title>
-      </Head>
-
-      <main className="flex w-full flex-1 flex-col bg-gray-50 dark:bg-gray-800">
-        <Navbar />
-
-        <div className="mx-auto w-full max-w-5xl p-4">
-          <div className="rounded bg-white p-3 dark:bg-gray-900 dark:text-gray-100">
-            <div className="mx-auto w-52">
-              <Image
-                src="/images/fabulous-celebration.png"
-                width={912}
-                height={912}
-                alt="fabulous celebration"
-                priority
-              />
-            </div>
-            <h3 className="mb-4 text-center text-xl font-medium">
-              Welcome to your new onedrive-vercel-index 🎉
-            </h3>
-
-            <h3 className="mt-4 mb-2 text-lg font-medium">Step 3/3: Get access and refresh tokens</h3>
-            {error ? (
-              <div>
-                <p className="py-1 font-medium text-red-500">
-                  <FontAwesomeIcon icon="exclamation-circle" className="mr-2" />
-                  <span>{`Whoops, looks like we got a problem: ${error}.`}</span>
-                </p>
-                <p className="my-2 whitespace-pre-line rounded border border-gray-400/20 bg-gray-50 p-2 font-mono text-sm opacity-80 dark:bg-gray-800">
-                  {description}
-                </p>
-                {errorUri && (
-                  <p>
-                    Check out{' '}
-                    <a
-                      href={errorUri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline dark:text-blue-500"
-                    >
-                      {/* eslint-disable-next-line react/no-unescaped-entities */}
-                      Microsoft's official explanation
-                    </a>{' '}
-                    on the error message.
-                  </p>
-                )}
-                <div className="mb-2 mt-6 text-right">
-                  <button
-                    className="rounded-lg bg-gradient-to-br from-red-500 to-orange-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 focus:ring-red-200 disabled:cursor-not-allowed disabled:grayscale dark:focus:ring-red-800"
-                    onClick={() => {
-                      router.push('/onedrive-vercel-index-oauth/step-1')
-                    }}
-                  >
-                    <FontAwesomeIcon icon="arrow-left" /> <span>Restart</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p className="py-1 font-medium">Success! The API returned what we needed.</p>
-                <ol className="py-1">
-                  {accessToken && (
-                    <li>
-                      <FontAwesomeIcon icon={['far', 'check-circle']} className="text-green-500" />{' '}
-                      <span>
-                        Acquired access_token:{' '}
-                        <code className="font-mono text-sm opacity-80">{`${accessToken.substring(0, 60)}...`}</code>
-                      </span>
-                    </li>
-                  )}
-                  {refreshToken && (
-                    <li>
-                      <FontAwesomeIcon icon={['far', 'check-circle']} className="text-green-500" />{' '}
-                      <span>
-                        Acquired refresh_token:{' '}
-                        <code className="font-mono text-sm opacity-80">{`${refreshToken.substring(0, 60)}...`}</code>
-                      </span>
-                    </li>
-                  )}
-                </ol>
-
-                <p className="py-1 text-sm font-medium text-teal-500">
-                  <FontAwesomeIcon icon="exclamation-circle" className="mr-1" />{' '}
-                  These tokens may take a few seconds to populate after you click the button below.
-                  If you go back home and still see the welcome page telling you to re-authenticate,
-                  revisit home and do a hard refresh.
-                </p>
-                <p className="py-1">
-                  {`Final step, click the button below to store these tokens persistently before they expire after ${Math.floor(remainingExpiryTime / 60)} minutes ${remainingExpiryTime - Math.floor(remainingExpiryTime / 60) * 60} seconds. `}
-                  {`Don't worry, after storing them, onedrive-vercel-index will take care of token refreshes and updates after your site goes live.`}
-                </p>
-
-                <div className="mb-2 mt-6 text-right">
-                  <button
-                    className={`rounded-lg bg-gradient-to-br px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 ${
-                      buttonError
-                        ? 'from-red-500 to-orange-400 focus:ring-red-200 dark:focus:ring-red-800'
-                        : 'from-green-500 to-teal-300 focus:ring-green-200 dark:focus:ring-green-800'
-                    }`}
-                    onClick={sendAuthTokensToServer}
-                  >
-                    {buttonContent}
-                  </button>
-                </div>
-              </div>
+    <PageLayout title={`OAuth Step 3 - ${publicConfig.title}`}>
+      <OAuthCard
+        imageSrc="/images/fabulous-celebration.png"
+        imageAlt="fabulous celebration"
+        stepTitle="Step 3/3: Get access and refresh tokens"
+      >
+        {error ? (
+          <div>
+            <p className="py-1 font-medium text-red-500">
+              <FontAwesomeIcon icon="exclamation-circle" className="mr-2" />
+              <span>{`Whoops, looks like we got a problem: ${error}.`}</span>
+            </p>
+            <p className="my-2 rounded border border-gray-400/20 bg-gray-50 p-2 font-mono text-sm whitespace-pre-line opacity-80 dark:bg-gray-800">
+              {description}
+            </p>
+            {errorUri && (
+              <p>
+                Check out{' '}
+                <a
+                  href={errorUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline dark:text-blue-500"
+                >
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
+                  Microsoft's official explanation
+                </a>{' '}
+                on the error message.
+              </p>
             )}
+            <div className="mt-6 mb-2 text-right">
+              <button
+                className="rounded-lg bg-gradient-to-br from-red-500 to-orange-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 focus:ring-red-200 disabled:cursor-not-allowed disabled:grayscale dark:focus:ring-red-800"
+                onClick={() => {
+                  router.push('/onedrive-vercel-index-oauth/step-1')
+                }}
+              >
+                <FontAwesomeIcon icon="arrow-left" /> <span>Restart</span>
+              </button>
+            </div>
           </div>
-        </div>
-      </main>
+        ) : (
+          <div>
+            <p className="py-1 font-medium">Success! The API returned what we needed.</p>
+            <ol className="py-1">
+              {accessToken && (
+                <li>
+                  <FontAwesomeIcon icon={['far', 'check-circle']} className="text-green-500" />{' '}
+                  <span>
+                    Acquired access_token:{' '}
+                    <code className="font-mono text-sm opacity-80">{`${accessToken.substring(0, 60)}...`}</code>
+                  </span>
+                </li>
+              )}
+              {refreshToken && (
+                <li>
+                  <FontAwesomeIcon icon={['far', 'check-circle']} className="text-green-500" />{' '}
+                  <span>
+                    Acquired refresh_token:{' '}
+                    <code className="font-mono text-sm opacity-80">{`${refreshToken.substring(0, 60)}...`}</code>
+                  </span>
+                </li>
+              )}
+            </ol>
 
-      <Footer />
-    </div>
+            <p className="py-1 text-sm font-medium text-teal-500">
+              <FontAwesomeIcon icon="exclamation-circle" className="mr-1" /> These tokens may take a few seconds to
+              populate after you click the button below. If you go back home and still see the welcome page telling you
+              to re-authenticate, revisit home and do a hard refresh.
+            </p>
+            <p className="py-1">
+              {`Final step, click the button below to store these tokens persistently before they expire after ${Math.floor(remainingExpiryTime / 60)} minutes ${remainingExpiryTime - Math.floor(remainingExpiryTime / 60) * 60} seconds. `}
+              {`Don't worry, after storing them, onedrive-vercel-index will take care of token refreshes and updates after your site goes live.`}
+            </p>
+
+            <div className="mt-6 mb-2 text-right">
+              <button
+                className={`rounded-lg bg-gradient-to-br px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 ${
+                  storeTokenStatus === 'error'
+                    ? 'from-red-500 to-orange-400 focus:ring-red-200 dark:focus:ring-red-800'
+                    : 'from-green-500 to-teal-300 focus:ring-green-200 dark:focus:ring-green-800'
+                }`}
+                onClick={sendAuthTokensToServer}
+              >
+                {storeTokenButtonContent(storeTokenStatus)}
+              </button>
+            </div>
+          </div>
+        )}
+      </OAuthCard>
+    </PageLayout>
   )
 }
 

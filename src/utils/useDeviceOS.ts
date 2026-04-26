@@ -1,20 +1,16 @@
 import { useEffect, useState } from 'react'
 
+const osPatterns = [
+  ['Windows', 'windows'],
+  ['Mac OS', 'mac'],
+  ['Linux', 'linux'],
+] as const
+
 export default function useDeviceOS(): string {
-  const [os, setOS] = useState('')
+  const [os, setOs] = useState('')
 
   useEffect(() => {
-    const userAgent = window.navigator.userAgent
-
-    if (userAgent.indexOf('Windows') > -1) {
-      setOS('windows')
-    } else if (userAgent.indexOf('Mac OS') > -1) {
-      setOS('mac')
-    } else if (userAgent.indexOf('Linux') > -1) {
-      setOS('linux')
-    } else {
-      setOS('other')
-    }
+    setOs(osPatterns.find(([pattern]) => window.navigator.userAgent.includes(pattern))?.[1] ?? 'other')
   }, [])
 
   return os

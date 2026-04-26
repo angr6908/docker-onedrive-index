@@ -5,12 +5,9 @@ import CryptoJS from 'crypto-js'
 // access tokens, and refresh tokens), used along with the following two functions
 const AES_SECRET_KEY = 'onedrive-vercel-index'
 export function obfuscateToken(token: string): string {
-  // Encrypt token with AES
-  const encrypted = CryptoJS.AES.encrypt(token, AES_SECRET_KEY)
-  return encrypted.toString()
+  return CryptoJS.AES.encrypt(token, AES_SECRET_KEY).toString()
 }
 export function revealObfuscatedToken(obfuscated: string): string {
-  // Decrypt SHA256 obfuscated token
   const decrypted = CryptoJS.AES.decrypt(obfuscated, AES_SECRET_KEY)
   return decrypted.toString(CryptoJS.enc.Utf8)
 }
@@ -37,14 +34,13 @@ export function generateAuthorisationUrl({
   scope: string
 }): string {
   const authUrl = authApi.replace('/token', '/authorize')
-
-  // Construct URL parameters for OAuth2
-  const params = new URLSearchParams()
-  params.append('client_id', clientId)
-  params.append('redirect_uri', redirectUri)
-  params.append('response_type', 'code')
-  params.append('scope', scope)
-  params.append('response_mode', 'query')
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope,
+    response_mode: 'query',
+  })
 
   return `${authUrl}?${params.toString()}`
 }
@@ -52,12 +48,8 @@ export function generateAuthorisationUrl({
 // The code returned from the Microsoft OAuth 2.0 authorization URL is a request URL with hostname
 // http://localhost and URL parameter code. This function extracts the code from the request URL
 export function extractAuthCodeFromRedirected(url: string, redirectUri: string): string {
-  // Return empty string if the url is not the defined redirect uri
-  if (!url.startsWith(redirectUri)) {
-    return ''
-  }
+  if (!url.startsWith(redirectUri)) return ''
 
-  // New URL search parameter
   const params = new URLSearchParams(url.split('?')[1])
   return params.get('code') ?? ''
 }
@@ -66,7 +58,7 @@ export function extractAuthCodeFromRedirected(url: string, redirectUri: string):
 // will be used to request an access token. This function requests the access token with the authorisation code
 // and returns the access token and refresh token on success.
 export async function requestTokenWithAuthCode(
-  code: string
+  code: string,
 ): Promise<
   | { expiryTime: string; accessToken: string; refreshToken: string }
   | { error: string; errorDescription: string; errorUri: string }
@@ -75,15 +67,14 @@ export async function requestTokenWithAuthCode(
   const { clientId, redirectUri, authApi } = apiConfig
   const clientSecret = getClientSecret()
 
-  // Construct URL parameters for OAuth2
-  const params = new URLSearchParams()
-  params.append('client_id', clientId)
-  params.append('redirect_uri', redirectUri)
-  params.append('client_secret', clientSecret)
-  params.append('code', code)
-  params.append('grant_type', 'authorization_code')
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    client_secret: clientSecret,
+    code,
+    grant_type: 'authorization_code',
+  })
 
-  // Request access token
   return axios
     .post(authApi, params, {
       headers: {
@@ -101,7 +92,7 @@ export async function requestTokenWithAuthCode(
 }
 
 export async function sendTokenToServer(accessToken: string, refreshToken: string, expiryTime: string | number) {
-  return await axios.post(
+  return axios.post(
     '/api',
     {
       obfuscatedAccessToken: obfuscateToken(accessToken),
@@ -112,6 +103,6 @@ export async function sendTokenToServer(accessToken: string, refreshToken: strin
       headers: {
         'Content-Type': 'application/json',
       },
-    }
+    },
   )
 }

@@ -1,5 +1,5 @@
-import axios from 'axios'
 import { useEffect, useState } from 'react'
+import { appendProtectedToken } from './odUrls'
 import { getStoredToken } from './protectedRouteHandler'
 
 /**
@@ -9,23 +9,43 @@ import { getStoredToken } from './protectedRouteHandler'
  */
 export default function useFileContent(
   fetchUrl: string,
-  path: string
+  path: string,
 ): { response: any; error: string; validating: boolean } {
   const [response, setResponse] = useState('')
   const [validating, setValidating] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const hashedToken = getStoredToken(path)
-    const url = fetchUrl + (hashedToken ? `&odpt=${hashedToken}` : '')
+    let active = true
+    const controller = new AbortController()
+    const url = appendProtectedToken(fetchUrl, getStoredToken(path))
 
-    axios
-      // Using 'blob' as response type to get the response as a raw file blob, which is later parsed as a string.
-      // Axios defaults response parsing to JSON, which causes issues when parsing JSON files.
-      .get(url, { responseType: 'blob' })
-      .then(async res => setResponse(await res.data.text()))
-      .catch(e => setError(e.message))
-      .finally(() => setValidating(false))
+    setValidating(true)
+    setError('')
+
+    fetch(url, {
+      headers: { Accept: 'text/plain, */*' },
+      signal: controller.signal,
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error(response.statusText || `Request failed with ${response.status}`)
+        return response.text()
+      })
+      .then(text => {
+        if (active) setResponse(text)
+      })
+      .catch(error => {
+        if (active && error.name !== 'AbortError') setError(error.message)
+      })
+      .finally(() => {
+        if (active) setValidating(false)
+      })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
   }, [fetchUrl, path])
+
   return { response, error, validating }
 }

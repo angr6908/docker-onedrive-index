@@ -1,4 +1,4 @@
-import { FC, CSSProperties, ReactNode } from 'react'
+import { FC } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -10,6 +10,7 @@ import { tomorrowNight } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
 import 'katex/dist/katex.min.css'
 
 import useFileContent from '../../utils/fetchOnMount'
+import { rawFileUrl } from '../../utils/odUrls'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -23,8 +24,12 @@ const MarkdownPreview: FC<{
   // The parent folder of the markdown file, which is also the relative image folder
   const parentPath = standalone ? path.substring(0, path.lastIndexOf('/')) : path
 
-  const { response: content, error, validating } = useFileContent(`/api/raw/?path=${parentPath}/${file.name}`, path)
-  
+  const {
+    response: content,
+    error,
+    validating,
+  } = useFileContent(rawFileUrl(`${parentPath}/${file.name}`, null, '', true), path)
+
   // Check if the image is relative path instead of a absolute url
   const isUrlAbsolute = (url: string | string[]) => url.indexOf('://') > 0 || url.indexOf('//') === 0
   // Custom renderer:
@@ -40,6 +45,8 @@ const MarkdownPreview: FC<{
           title={title}
           width={width}
           height={height}
+          loading="lazy"
+          decoding="async"
           style={style}
         />
       )

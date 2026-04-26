@@ -22,6 +22,7 @@ export type OdFolderChildren = OdFolderObject['value'][number]
 // A file object returned from the OneDrive API. This object may contain 'video' if the file is a video.
 export type OdFileObject = {
   '@odata.context': string
+  '@microsoft.graph.downloadUrl'?: string
   name: string
   size: number
   id: string

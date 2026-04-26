@@ -36,23 +36,5 @@ export function compareHashedToken({
 
 export function matchProtectedRoute(route: string): string {
   const protectedRoutes = getPublicRuntimeConfig().protectedRoutes
-  let authTokenPath = ''
-
-  for (const r of protectedRoutes) {
-    // protected route array could be empty
-    if (r) {
-      if (
-        route.startsWith(
-          r
-            .split('/')
-            .map(p => encodeURIComponent(p))
-            .join('/')
-        )
-      ) {
-        authTokenPath = r
-        break
-      }
-    }
-  }
-  return authTokenPath
+  return protectedRoutes.find(r => r && route.startsWith(r.split('/').map(encodeURIComponent).join('/'))) ?? ''
 }

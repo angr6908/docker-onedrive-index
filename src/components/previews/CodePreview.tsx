@@ -7,6 +7,7 @@ import { tomorrowNightEighties, tomorrow } from 'react-syntax-highlighter/dist/c
 
 import useFileContent from '../../utils/fetchOnMount'
 import { getLanguageByFileName } from '../../utils/getPreviewType'
+import { rawFileUrl } from '../../utils/odUrls'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -14,10 +15,10 @@ import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
 const CodePreview: FC<{ file: any }> = ({ file }) => {
   const { asPath } = useRouter()
-  const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
+  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath, null, '', true), asPath)
 
   const theme = useSystemTheme('dark')
-  
+
   if (error) {
     return (
       <PreviewContainer>

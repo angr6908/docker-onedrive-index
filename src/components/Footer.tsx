@@ -1,16 +1,10 @@
 import { getPublicRuntimeConfig } from '../utils/publicRuntimeConfig'
 
-const createFooterMarkup = () => {
-  return {
-    __html: getPublicRuntimeConfig().footer,
-  }
-}
-
 const Footer = () => {
   return (
     <div
       className="w-full border-t border-gray-900/10 p-4 text-center text-xs font-medium text-gray-400 dark:border-gray-500/30"
-      dangerouslySetInnerHTML={createFooterMarkup()}
+      dangerouslySetInnerHTML={{ __html: getPublicRuntimeConfig().footer }}
     ></div>
   )
 }

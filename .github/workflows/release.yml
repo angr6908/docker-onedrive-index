@@ -1,7 +1,9 @@
-name: Docker Publish
+name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 env:
   IMAGE_NAME: unmol637/onedrive-index
@@ -35,5 +37,5 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:1.0.0
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ${{ env.IMAGE_NAME }}:latest

@@ -1,16 +1,17 @@
+import type { OdFileObject } from '../../types'
+
 import { useRouter } from 'next/router'
 import { getBaseUrl } from '../../utils/getBaseUrl'
+import { directFileUrl } from '../../utils/odUrls'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer } from './Containers'
 
-const PDFEmbedPreview: React.FC<{ file: any }> = ({ file }) => {
+const PDFPreview: React.FC<{ file: OdFileObject }> = ({ file }) => {
   const { asPath } = useRouter()
   const hashedToken = getStoredToken(asPath)
 
-  const pdfPath = encodeURIComponent(
-    `${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`
-  )
+  const pdfPath = encodeURIComponent(directFileUrl(file, asPath, hashedToken, getBaseUrl()))
   const url = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${pdfPath}`
 
   return (
@@ -25,4 +26,4 @@ const PDFEmbedPreview: React.FC<{ file: any }> = ({ file }) => {
   )
 }
 
-export default PDFEmbedPreview
+export default PDFPreview

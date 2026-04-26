@@ -1,15 +1,17 @@
+import { FC } from 'react'
 import { useRouter } from 'next/router'
 
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import useFileContent from '../../utils/fetchOnMount'
+import { rawFileUrl } from '../../utils/odUrls'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
-const TextPreview = ({ file }) => {
+const TextPreview: FC<{ file: any }> = () => {
   const { asPath } = useRouter()
-  
-  const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
+
+  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath, null, '', true), asPath)
   if (error) {
     return (
       <PreviewContainer>

@@ -79,45 +79,26 @@ export const extensions = {
   epub: preview.epub,
 
   url: preview.url,
+} as Record<string, string>
+
+const languageAliases: Record<string, string> = {
+  ts: 'typescript',
+  tsx: 'typescript',
+  rs: 'rust',
+  js: 'javascript',
+  jsx: 'javascript',
+  sh: 'shell',
+  cs: 'csharp',
+  py: 'python',
+  yml: 'yaml',
 }
 
 export function getPreviewType(extension: string, flags?: { video?: boolean }): string | undefined {
-  let previewType = extensions[extension]
-  if (!previewType) {
-    return previewType
-  }
-
-  // Files with '.ts' extensions may be TypeScript files or TS Video files, we check for the flag 'video'
-  // to determine what preview renderer to use for '.ts' files.
-  if (extension === 'ts') {
-    if (flags?.video) {
-      previewType = preview.video
-    }
-  }
-
-  return previewType
+  if (extension === 'ts' && flags?.video) return preview.video
+  return extensions[extension]
 }
 
 export function getLanguageByFileName(filename: string): string {
   const extension = getExtension(filename)
-  switch (extension) {
-    case 'ts':
-    case 'tsx':
-      return 'typescript'
-    case 'rs':
-      return 'rust'
-    case 'js':
-    case 'jsx':
-      return 'javascript'
-    case 'sh':
-      return 'shell'
-    case 'cs':
-      return 'csharp'
-    case 'py':
-      return 'python'
-    case 'yml':
-      return 'yaml'
-    default:
-      return extension
-  }
+  return languageAliases[extension] ?? extension
 }

@@ -1,19 +1,21 @@
 import type { OdThumbnail } from '../../types'
 
-import { posix as pathPosix } from 'path'
-
 import axios from 'axios'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import { checkAuthRoute, encodePath, getAccessToken } from '.'
+import {
+  graphHeaders,
+  normalisePathQuery,
+  requireAccessToken,
+  sendDriveError,
+  verifyProtectedPath,
+} from '../../utils/apiRoute'
+import { encodePath } from '../../utils/onedriveApi'
 import apiConfig from '../../../config/api.config'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const accessToken = await getAccessToken()
-  if (!accessToken) {
-    res.status(403).json({ error: 'No access token.' })
-    return
-  }
+  const accessToken = await requireAccessToken(res)
+  if (!accessToken) return
 
   // Get item thumbnails by its path since we will later check if it is protected
   const { path = '', size = 'medium', odpt = '' } = req.query
@@ -27,31 +29,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(400).json({ error: 'Invalid size' })
     return
   }
-  // Sometimes the path parameter is defaulted to '[...path]' which we need to handle
-  if (path === '[...path]') {
-    res.status(400).json({ error: 'No path specified.' })
+  const pathQuery = normalisePathQuery(path)
+  if ('error' in pathQuery) {
+    res.status(400).json({ error: pathQuery.error })
     return
-  }
-  // If the path is not a valid path, return 400
-  if (typeof path !== 'string') {
-    res.status(400).json({ error: 'Path query invalid.' })
-    return
-  }
-  const cleanPath = pathPosix.resolve('/', pathPosix.normalize(path))
-
-  const { code, message } = await checkAuthRoute(cleanPath, accessToken, odpt as string)
-  // Status code other than 200 means user has not authenticated yet
-  if (code !== 200) {
-    res.status(code).json({ error: message })
-    return
-  }
-  // If message is empty, then the path is not protected.
-  // Conversely, protected routes are not allowed to serve from cache.
-  if (message !== '') {
-    res.setHeader('Cache-Control', 'no-cache')
   }
 
-  const requestPath = encodePath(cleanPath)
+  const hasAccess = await verifyProtectedPath(res, pathQuery.path, accessToken, odpt as string)
+  if (!hasAccess) return
+
+  const requestPath = encodePath(pathQuery.path)
   // Handle response from OneDrive API
   const requestUrl = `${apiConfig.driveApi}/root${requestPath}`
   // Whether path is root, which requires some special treatment
@@ -59,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { data } = await axios.get(`${requestUrl}${isRoot ? '' : ':'}/thumbnails`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: graphHeaders(accessToken),
     })
 
     const thumbnailUrl = data.value && data.value.length > 0 ? (data.value[0] as OdThumbnail)[size].url : null
@@ -69,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(400).json({ error: "The item doesn't have a valid thumbnail." })
     }
   } catch (error: any) {
-    res.status(error?.response?.status).json({ error: error?.response?.data ?? 'Internal server error.' })
+    sendDriveError(res, error)
   }
   return
 }

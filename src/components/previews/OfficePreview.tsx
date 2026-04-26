@@ -7,6 +7,7 @@ import Preview from 'preview-office-docs'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer } from './Containers'
 import { getBaseUrl } from '../../utils/getBaseUrl'
+import { directFileUrl } from '../../utils/odUrls'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
@@ -16,12 +17,10 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const docContainer = useRef<HTMLDivElement>(null)
   const [docContainerWidth, setDocContainerWidth] = useState(600)
 
-  const docUrl = encodeURIComponent(
-    `${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`
-  )
+  const docUrl = encodeURIComponent(directFileUrl(file, asPath, hashedToken, getBaseUrl()))
 
   useEffect(() => {
-    setDocContainerWidth(docContainer.current ? docContainer.current.offsetWidth : 600)
+    setDocContainerWidth(docContainer.current?.offsetWidth ?? 600)
   }, [])
 
   return (

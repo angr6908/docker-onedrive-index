@@ -91,21 +91,7 @@ const extensions = {
   azw3: icons.book,
 
   url: icons.link,
-}
-
-/**
- * To stop TypeScript complaining about indexing the object with a non-existent key
- * https://dev.to/mapleleaf/indexing-objects-in-typescript-1cgi
- *
- * Fixed by ChatGPT with the upgrade of TypeScript 4.9
- *
- * @param obj Object with keys to index
- * @param key The index key
- * @returns Whether or not the key exists inside the object
- */
-export function hasKey(obj: Record<string, any>, key: string): boolean {
-  return key in obj
-}
+} as Record<string, [IconPrefix, IconName]>
 
 export function getRawExtension(fileName: string): string {
   return fileName.slice(((fileName.lastIndexOf('.') - 1) >>> 0) + 2)
@@ -116,15 +102,6 @@ export function getExtension(fileName: string): string {
 
 export function getFileIcon(fileName: string, flags?: { video?: boolean }): [IconPrefix, IconName] {
   const extension = getExtension(fileName)
-  let icon = hasKey(extensions, extension) ? extensions[extension] : icons.file
-
-  // Files with '.ts' extensions may be TypeScript files or TS Video files, we check for the flag 'video'
-  // to determine which icon to render for '.ts' files.
-  if (extension === 'ts') {
-    if (flags?.video) {
-      icon = icons.video
-    }
-  }
-
-  return icon
+  if (extension === 'ts' && flags?.video) return icons.video
+  return extensions[extension] ?? icons.file
 }

@@ -1,55 +1,56 @@
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { IconName } from '@fortawesome/fontawesome-svg-core'
-import { Dialog, Transition } from '@headlessui/react'
+import { FontAwesomeIcon } from '../utils/fontawesome'
 import toast, { Toaster } from 'react-hot-toast'
-import { useHotkeys } from 'react-hotkeys-hook'
 
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import { Fragment, useEffect, useState } from 'react'
-
-import SearchModal from './SearchModal'
+import { useCallback, useEffect, useState } from 'react'
 
 import useDeviceOS from '../utils/useDeviceOS'
 import { getPublicRuntimeConfig } from '../utils/publicRuntimeConfig'
+
+const BrandIcon = dynamic(() => import('./BrandIcon'))
+const ClearTokensDialog = dynamic(() => import('./ClearTokensDialog'), { ssr: false })
+const SearchModal = dynamic(() => import('./SearchModal'), { ssr: false })
 
 const Navbar = () => {
   const router = useRouter()
   const os = useDeviceOS()
   const siteConfig = getPublicRuntimeConfig()
+  const protectedRoutes = siteConfig.protectedRoutes
 
   const [tokenPresent, setTokenPresent] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [tokenDialogMounted, setTokenDialogMounted] = useState(false)
 
   const [searchOpen, setSearchOpen] = useState(false)
-  const openSearchBox = () => setSearchOpen(true)
-
-  useHotkeys(`${os === 'mac' ? 'meta' : 'ctrl'}+k`, e => {
-    openSearchBox()
-    e.preventDefault()
-  })
-
-  useEffect(() => {
-    const storedToken = () => {
-      for (const r of siteConfig.protectedRoutes) {
-        if (localStorage.hasOwnProperty(r)) {
-          return true
-        }
-      }
-      return false
-    }
-    setTokenPresent(storedToken())
+  const [searchMounted, setSearchMounted] = useState(false)
+  const openSearchBox = useCallback(() => {
+    setSearchMounted(true)
+    setSearchOpen(true)
   }, [])
 
-  
+  useEffect(() => {
+    const handleSearchHotkey = (event: KeyboardEvent) => {
+      const modifierPressed = os === 'mac' ? event.metaKey : event.ctrlKey
+      if (!modifierPressed || event.key.toLowerCase() !== 'k') return
+
+      event.preventDefault()
+      openSearchBox()
+    }
+
+    window.addEventListener('keydown', handleSearchHotkey)
+    return () => window.removeEventListener('keydown', handleSearchHotkey)
+  }, [openSearchBox, os])
+
+  useEffect(() => {
+    setTokenPresent(protectedRoutes.some(r => localStorage.hasOwnProperty(r)))
+  }, [protectedRoutes])
+
   const clearTokens = () => {
     setIsOpen(false)
-
-    siteConfig.protectedRoutes.forEach(r => {
-      localStorage.removeItem(r)
-    })
-
+    protectedRoutes.forEach(r => localStorage.removeItem(r))
     toast.success('Cleared all tokens')
     setTimeout(() => {
       router.reload()
@@ -57,20 +58,20 @@ const Navbar = () => {
   }
 
   return (
-    <div className="sticky top-0 z-[100] border-b border-gray-900/10 bg-white bg-opacity-80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
+    <div className="bg-opacity-80 sticky top-0 z-[100] border-b border-gray-900/10 bg-white backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
       <Toaster />
 
-      <SearchModal searchOpen={searchOpen} setSearchOpen={setSearchOpen} />
+      {searchMounted && <SearchModal searchOpen={searchOpen} setSearchOpen={setSearchOpen} />}
 
       <div className="mx-auto flex w-full items-center justify-between space-x-4 px-4 py-1">
-        <Link href="/" passHref className="flex items-center space-x-2 py-2 hover:opacity-80 dark:text-white md:p-2">
+        <Link href="/" passHref className="flex items-center space-x-2 py-2 hover:opacity-80 md:p-2 dark:text-white">
           <Image src={siteConfig.icon} alt="icon" width="25" height="25" priority />
           <span className="hidden font-bold sm:block">{siteConfig.title}</span>
         </Link>
 
         <div className="flex flex-1 items-center space-x-4 text-gray-700 md:flex-initial">
           <button
-            className="flex flex-1 items-center justify-between rounded-lg bg-gray-100 px-2.5 py-1.5 hover:opacity-80 dark:bg-gray-800 dark:text-white md:w-48"
+            className="flex flex-1 items-center justify-between rounded-lg bg-gray-100 px-2.5 py-1.5 hover:opacity-80 md:w-48 dark:bg-gray-800 dark:text-white"
             onClick={openSearchBox}
           >
             <div className="flex items-center space-x-2">
@@ -86,8 +87,6 @@ const Navbar = () => {
             </div>
           </button>
 
-
-
           {siteConfig.links.length !== 0 &&
             siteConfig.links.map((l: { name: string; link: string }) => (
               <a
@@ -97,7 +96,7 @@ const Navbar = () => {
                 rel="noopener noreferrer"
                 className="flex items-center space-x-2 hover:opacity-80 dark:text-white"
               >
-                <FontAwesomeIcon icon={['fab', l.name.toLowerCase() as IconName]} />
+                <BrandIcon name={l.name} />
                 <span className="hidden text-sm font-medium md:inline-block">
                   {
                     // Append link name comments here to add translations
@@ -118,7 +117,10 @@ const Navbar = () => {
           {tokenPresent && (
             <button
               className="flex items-center space-x-2 hover:opacity-80 dark:text-white"
-              onClick={() => setIsOpen(true)}
+              onClick={() => {
+                setTokenDialogMounted(true)
+                setIsOpen(true)
+              }}
             >
               <span className="hidden text-sm font-medium md:inline-block">{'Logout'}</span>
               <FontAwesomeIcon icon="sign-out-alt" />
@@ -127,74 +129,14 @@ const Navbar = () => {
         </div>
       </div>
 
-      <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="fixed inset-0 z-10 overflow-y-auto" open={isOpen} onClose={() => setIsOpen(false)}>
-          <div className="min-h-screen px-4 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-100"
-              enterFrom="opacity-0"
-              enterTo="opacity-100"
-              leave="ease-in duration-50"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-            >
-              <div className="fixed inset-0 bg-gray-50 dark:bg-gray-800" />
-            </Transition.Child>
-
-            {/* This element is to trick the browser into centering the modal contents. */}
-            <span className="inline-block h-screen align-middle" aria-hidden="true">
-              &#8203;
-            </span>
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-100"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-50"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <div className="my-8 inline-block w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle transition-all dark:bg-gray-900">
-                <Dialog.Title className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  {'Clear all tokens?'}
-                </Dialog.Title>
-                <div className="mt-2">
-                  <p className="text-sm text-gray-500">
-                    {'These tokens are used to authenticate yourself into password protected folders, ' +
-                      'clearing them means that you will need to re-enter the passwords again.'}
-                  </p>
-                </div>
-
-                <div className="mt-4 max-h-32 overflow-y-scroll font-mono text-sm dark:text-gray-100">
-                  {siteConfig.protectedRoutes.map((r, i) => (
-                    <div key={i} className="flex items-center space-x-1">
-                      <FontAwesomeIcon icon="key" />
-                      <span className="truncate">{r}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-8 flex items-center justify-end">
-                  <button
-                    className="mr-3 inline-flex items-center justify-center space-x-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-400 focus:outline-none focus:ring focus:ring-blue-300"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {'Cancel'}
-                  </button>
-                  <button
-                    className="inline-flex items-center justify-center space-x-2 rounded bg-red-500 px-4 py-2 text-white hover:bg-red-400 focus:outline-none focus:ring focus:ring-red-300"
-                    onClick={() => clearTokens()}
-                  >
-                    <FontAwesomeIcon icon={['far', 'trash-alt']} />
-                    <span>{'Clear all'}</span>
-                  </button>
-                </div>
-              </div>
-            </Transition.Child>
-          </div>
-        </Dialog>
-      </Transition>
+      {tokenDialogMounted && (
+        <ClearTokensDialog
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          onClear={clearTokens}
+          protectedRoutes={protectedRoutes}
+        />
+      )}
     </div>
   )
 }
