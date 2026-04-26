@@ -14,16 +14,15 @@ import {
 import { revealObfuscatedToken } from '../../utils/oAuthHandler'
 import { storeOdAuthTokens } from '../../utils/odAuthTokenStore'
 import { encodePath, runCorsMiddleware } from '../../utils/onedriveApi'
+import { isNotPersonalVaultItem } from '../../utils/personalVault'
 
 const driveItemSelect = 'name,size,id,lastModifiedDateTime,folder,file,video,image'
 const fileItemSelect = `${driveItemSelect},@microsoft.graph.downloadUrl`
-const personalVaultFolderName = 'Personal Vault'
 const isLikelyFilePath = (path: string) => /\.[^/.]+$/.test(path.split('/').pop() ?? '')
 const shouldFallbackToIdentity = (error: unknown) => {
   if (!axios.isAxiosError(error)) return false
   return error.response?.status === 400 || error.response?.status === 404
 }
-const hidePersonalVaultFolder = (item: any) => !(item?.folder && item.name === personalVaultFolderName)
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // If method is POST, then the API is called by the client to store acquired tokens
@@ -94,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const nextPage = nextPageToken(folderData['@odata.nextLink'])
     const visibleFolderData =
       isRoot && Array.isArray(folderData.value)
-        ? { ...folderData, value: folderData.value.filter(hidePersonalVaultFolder) }
+        ? { ...folderData, value: folderData.value.filter(isNotPersonalVaultItem) }
         : folderData
 
     res.status(200).json({ folder: visibleFolderData, ...(nextPage ? { next: nextPage } : {}) })

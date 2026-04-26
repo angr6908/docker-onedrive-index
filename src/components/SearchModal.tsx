@@ -17,6 +17,7 @@ import { LoadingIcon } from './Loading'
 import { getFileIcon } from '../utils/getFileIcon'
 import { fetcher } from '../utils/fetchWithSWR'
 import { getPublicRuntimeConfig } from '../utils/publicRuntimeConfig'
+import HiddenFocusGuard from './HiddenFocusGuard'
 
 type SearchItem = OdSearchResult[number]
 type SearchState = ReturnType<typeof useDriveItemSearch>['results']
@@ -220,13 +221,7 @@ export default function SearchModal({
             leaveTo="opacity-0 scale-95"
           >
             <Dialog.Panel className="relative z-10 my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-xl transition-all">
-              <button
-                ref={searchFocusGuardRef}
-                type="button"
-                tabIndex={-1}
-                aria-hidden="true"
-                className="fixed h-px w-px -translate-x-full overflow-hidden opacity-0"
-              />
+              <HiddenFocusGuard ref={searchFocusGuardRef} />
               <Dialog.Title className="sr-only">Search</Dialog.Title>
               <div className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white">
                 <FontAwesomeIcon icon="search" className="h-4 w-4" />

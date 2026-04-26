@@ -7,6 +7,7 @@ import { getBaseUrl } from '../utils/getBaseUrl'
 import { namedRawFileUrl, rawFileUrl } from '../utils/odUrls'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import { getReadablePath } from '../utils/getReadablePath'
+import HiddenFocusGuard from './HiddenFocusGuard'
 
 function LinkContainer({ title, value }: { title: string; value: string }) {
   const clipboard = useClipboard({ copiedTimeout: 1000 })
@@ -79,13 +80,7 @@ export default function CustomEmbedLinkMenu({
             leaveTo="opacity-0 scale-95"
           >
             <div className="inline-block max-h-[80vh] w-full max-w-3xl transform overflow-hidden overflow-y-scroll rounded border border-gray-400/30 bg-white p-4 text-left align-middle text-sm shadow-xl transition-all dark:bg-gray-900 dark:text-white">
-              <button
-                ref={menuFocusGuardRef}
-                type="button"
-                tabIndex={-1}
-                aria-hidden="true"
-                className="fixed h-px w-px -translate-x-full overflow-hidden opacity-0"
-              />
+              <HiddenFocusGuard ref={menuFocusGuardRef} />
               <Dialog.Title as="h3" className="py-2 text-xl font-bold">
                 {'Customise direct link'}
               </Dialog.Title>

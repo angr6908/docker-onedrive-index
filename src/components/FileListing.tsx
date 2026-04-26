@@ -14,6 +14,7 @@ import { getExtension } from '../utils/getFileIcon'
 import { getItemPath, queryToPath } from '../utils/drivePath'
 import { rawFileUrl } from '../utils/odUrls'
 import { getStoredToken } from '../utils/protectedRouteHandler'
+import { isNotPersonalVaultItem } from '../utils/personalVault'
 import {
   DownloadingToast,
   downloadMultipleFiles,
@@ -126,7 +127,8 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
   const onlyOnePage = typeof data[0].next === 'undefined'
 
   if ('folder' in responses[0]) {
-    const folderChildren = responses.flatMap(r => r.folder.value) as OdFolderObject['value']
+    const allFolderChildren = responses.flatMap(r => r.folder.value) as OdFolderObject['value']
+    const folderChildren = path === '/' ? allFolderChildren.filter(isNotPersonalVaultItem) : allFolderChildren
     const files = folderChildren.filter(isSelectableFile)
 
     // Find README.md file to render
