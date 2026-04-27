@@ -14,7 +14,7 @@ import {
 import { revealObfuscatedToken } from '../../utils/oAuthHandler'
 import { storeOdAuthTokens } from '../../utils/odAuthTokenStore'
 import { encodePath, runCorsMiddleware } from '../../utils/onedriveApi'
-import { isNotPersonalVaultItem } from '../../utils/personalVault'
+import { isNotPersonalVaultItem } from '../../utils/drivePath'
 
 const driveItemSelect = 'name,size,id,lastModifiedDateTime,folder,file,video,image'
 const fileItemSelect = `${driveItemSelect},@microsoft.graph.downloadUrl`
@@ -25,7 +25,6 @@ const shouldFallbackToIdentity = (error: unknown) => {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // If method is POST, then the API is called by the client to store acquired tokens
   if (req.method === 'POST') {
     const { obfuscatedAccessToken, accessTokenExpiry, obfuscatedRefreshToken } = req.body
     const accessToken = revealObfuscatedToken(obfuscatedAccessToken)
@@ -41,11 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  // If method is GET, then the API is a normal request to the OneDrive API for files or folders
   const { path = '/', raw = false, next = '', sort = '' } = req.query
 
-  // Set edge function caching for faster load times, check docs:
-  // https://vercel.com/docs/concepts/functions/edge-caching
   res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
 
   const pathQuery = normalisePathQuery(path, { trimTrailingSlash: true })
@@ -54,7 +50,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  // Validate sort param
   if (typeof sort !== 'string') {
     res.status(400).json({ error: 'Sort query invalid.' })
     return
@@ -63,15 +58,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const accessToken = await requireAccessToken(res)
   if (!accessToken) return
 
-  // Handle protected routes authentication
   const cleanPath = pathQuery.path
   const hasAccess = await verifyProtectedPath(res, cleanPath, accessToken, req.headers['od-protected-token'] as string)
   if (!hasAccess) return
 
   const requestPath = encodePath(cleanPath)
-  // Handle response from OneDrive API
   const requestUrl = `${apiConfig.driveApi}/root${requestPath}`
-  // Whether path is root, which requires some special treatment
   const isRoot = requestPath === ''
   const childrenUrl = `${requestUrl}${isRoot ? '' : ':'}/children`
 
@@ -95,22 +87,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       isRoot && Array.isArray(folderData.value)
         ? { ...folderData, value: folderData.value.filter(isNotPersonalVaultItem) }
         : folderData
-
     res.status(200).json({ folder: visibleFolderData, ...(nextPage ? { next: nextPage } : {}) })
   }
 
-  // Go for file raw download link, add CORS headers, and redirect to @microsoft.graph.downloadUrl
-  // (kept here for backwards compatibility, and cache headers will be reverted to no-cache)
   if (raw) {
     await runCorsMiddleware(req, res)
     res.setHeader('Cache-Control', 'no-cache')
 
     const { data } = await axios.get(requestUrl, {
       headers: graphHeaders(accessToken),
-      params: {
-        // OneDrive international version fails when only selecting the downloadUrl (what a stupid bug)
-        select: 'id,@microsoft.graph.downloadUrl',
-      },
+      params: { select: 'id,@microsoft.graph.downloadUrl' },
     })
 
     if ('@microsoft.graph.downloadUrl' in data) {
@@ -121,7 +107,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  // Querying current path identity (file or folder) and follow up query childrens in folder
   try {
     if (next) {
       sendFolderData(await fetchFolderData())
@@ -139,9 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: identityData } = await axios.get(requestUrl, {
       headers: graphHeaders(accessToken),
-      params: {
-        select: fileItemSelect,
-      },
+      params: { select: fileItemSelect },
     })
 
     if ('folder' in identityData) {

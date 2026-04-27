@@ -37,19 +37,15 @@ const VideoPlayer: FC<{
   mpegts: any
 }> = ({ videoName, videoUrl, width, height, thumbnail, subtitle, isFlv, mpegts }) => {
   useEffect(() => {
-    // Really really hacky way to inject subtitles as file blobs into the video element
     axios
       .get(subtitle, { responseType: 'blob' })
       .then(resp => {
         const track = document.querySelector('track')
         track?.setAttribute('src', URL.createObjectURL(resp.data))
       })
-      .catch(() => {
-        console.log('Could not load subtitle.')
-      })
+      .catch(() => {})
 
     if (isFlv) {
-      // Really hacky way to get the exposed video element from Plyr
       const video = document.getElementById('plyr')
       const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
       flv.attachMediaElement(video)
@@ -79,14 +75,9 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
 
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // OneDrive generates thumbnails for its video files, we pick the thumbnail with the highest resolution
   const thumbnail = thumbnailUrl(asPath, 'large', hashedToken)
-
-  // We assume subtitle files are beside the video with the same name, only webvtt '.vtt' files are supported
   const vtt = `${asPath.substring(0, asPath.lastIndexOf('.'))}.vtt`
   const subtitle = rawFileUrl(vtt, hashedToken)
-
-  // We also format the raw video file for the in-browser player as well as all other players
   const videoUrl = rawFileUrl(asPath, hashedToken)
   const playbackUrl = directFileUrl(file, asPath, hashedToken)
 
@@ -147,26 +138,14 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             btnIcon="pen"
           />
 
-          <DownloadButton
-            onClickCallback={() => window.open(`iina://weblink?url=${getBaseUrl()}${videoUrl}`)}
-            btnText="IINA"
-            btnImage="/players/iina.png"
-          />
-          <DownloadButton
-            onClickCallback={() => window.open(`vlc://${getBaseUrl()}${videoUrl}`)}
-            btnText="VLC"
-            btnImage="/players/vlc.png"
-          />
-          <DownloadButton
-            onClickCallback={() => window.open(`potplayer://${getBaseUrl()}${videoUrl}`)}
-            btnText="PotPlayer"
-            btnImage="/players/potplayer.png"
-          />
-          <DownloadButton
-            onClickCallback={() => window.open(`nplayer-http://${window?.location.hostname ?? ''}${videoUrl}`)}
-            btnText="nPlayer"
-            btnImage="/players/nplayer.png"
-          />
+          {[
+            { text: 'IINA', img: '/players/iina.png', url: `iina://weblink?url=${getBaseUrl()}${videoUrl}` },
+            { text: 'VLC', img: '/players/vlc.png', url: `vlc://${getBaseUrl()}${videoUrl}` },
+            { text: 'PotPlayer', img: '/players/potplayer.png', url: `potplayer://${getBaseUrl()}${videoUrl}` },
+            { text: 'nPlayer', img: '/players/nplayer.png', url: `nplayer-http://${window?.location.hostname ?? ''}${videoUrl}` },
+          ].map(({ text, img, url }) => (
+            <DownloadButton key={text} onClickCallback={() => window.open(url)} btnText={text} btnImage={img} />
+          ))}
         </div>
       </DownloadBtnContainer>
     </>

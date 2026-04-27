@@ -17,14 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const accessToken = await requireAccessToken(res)
   if (!accessToken) return
 
-  // Get item thumbnails by its path since we will later check if it is protected
   const { path = '', size = 'medium', odpt = '' } = req.query
 
-  // Set edge function caching for faster load times, if route is not protected, check docs:
-  // https://vercel.com/docs/concepts/functions/edge-caching
   if (odpt === '') res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
 
-  // Check whether the size is valid - must be one of 'large', 'medium', or 'small'
   if (size !== 'large' && size !== 'medium' && size !== 'small') {
     res.status(400).json({ error: 'Invalid size' })
     return
@@ -39,13 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!hasAccess) return
 
   const requestPath = encodePath(pathQuery.path)
-  // Handle response from OneDrive API
-  const requestUrl = `${apiConfig.driveApi}/root${requestPath}`
-  // Whether path is root, which requires some special treatment
   const isRoot = requestPath === ''
 
   try {
-    const { data } = await axios.get(`${requestUrl}${isRoot ? '' : ':'}/thumbnails`, {
+    const { data } = await axios.get(`${apiConfig.driveApi}/root${requestPath}${isRoot ? '' : ':'}/thumbnails`, {
       headers: graphHeaders(accessToken),
     })
 

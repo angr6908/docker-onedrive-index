@@ -5,12 +5,6 @@ import { fetcher } from '../utils/fetchWithSWR'
 import { getItemPath } from '../utils/drivePath'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 
-/**
- * A loading toast component with file download progress support
- * @param props
- * @param props.router Next router instance, used for reloading the page
- * @param props.progress Current downloading and compression progress (returned by jszip metadata)
- */
 export function DownloadingToast({ router, progress }: { router: NextRouter; progress?: string }) {
   return (
     <div className="flex items-center space-x-2">
@@ -52,12 +46,6 @@ const updateProgress = (toastId: string, router: NextRouter) => (metadata: { per
 }
 const createZip = async () => new (await import('jszip')).default()
 
-/**
- * Download multiple files after compressing them into a zip
- * @param toastId Toast ID to be used for toast notification
- * @param files Files to be downloaded
- * @param folder Optional folder name to hold files, otherwise flatten files in the zip
- */
 export async function downloadMultipleFiles({
   toastId,
   router,
@@ -83,17 +71,6 @@ export async function downloadMultipleFiles({
   downloadBlob({ blob: b, name: zipName(folder) })
 }
 
-/**
- * Download hierarchical tree-like files after compressing them into a zip
- * @param toastId Toast ID to be used for toast notification
- * @param files Files to be downloaded. Array of file and folder items excluding root folder.
- * Folder items MUST be in front of its children items in the array.
- * Use async generator because generation of the array may be slow.
- * When waiting for its generation, we can meanwhile download bodies of already got items.
- * Only folder items can have url undefined.
- * @param basePath Root dir path of files to be downloaded
- * @param folder Optional folder name to hold files, otherwise flatten files in the zip
- */
 export async function downloadTreelikeMultipleFiles({
   toastId,
   router,
@@ -118,28 +95,20 @@ export async function downloadTreelikeMultipleFiles({
 
   // Add selected file blobs to zip according to its path
   for await (const { name, url, path, isFolder } of files) {
-    // Search parent dir in map
     const i = map
       .slice()
       .reverse()
       .findIndex(({ path: parent }) => isDirectChild(parent, path))
-    if (i === -1) {
-      throw new Error('File array does not satisfy requirement')
-    }
+    if (i === -1) throw new Error('File array does not satisfy requirement')
 
-    // Add file or folder to zip
     const dir = map[map.length - 1 - i].dir
     if (isFolder) {
       map.push({ path, dir: dir.folder(name)! })
     } else {
-      dir.file(
-        name,
-        fetch(url!).then(r => r.blob()),
-      )
+      dir.file(name, fetch(url!).then(r => r.blob()))
     }
   }
 
-  // Create zip file and download it
   const b = await zip.generateAsync({ type: 'blob' }, updateProgress(toastId, router))
   downloadBlob({ blob: b, name: zipName(folder) })
 }
@@ -154,24 +123,9 @@ interface TraverseItem {
 const isDirectChild = (parent: string, child: string) =>
   child.substring(0, parent.length) === parent && child.substring(parent.length + 1).indexOf('/') === -1
 
-/**
- * One-shot concurrent top-down file traversing for the folder.
- * Due to react hook limit, we cannot reuse SWR utils for recursive actions.
- * We will directly fetch API and arrange responses instead.
- * In folder tree, we visit folders top-down as concurrently as possible.
- * Every time we visit a folder, we fetch and return meta of all its children.
- * If folders have pagination, partically retrieved items are not returned immediately,
- * but after all children of the folder have been successfully retrieved.
- * If an error occurred in paginated fetching, all children will be dropped.
- * @param path Folder to be traversed. The path should be cleaned in advance.
- * @returns Array of items representing folders and files of traversed folder top-down and excluding root folder.
- * Due to top-down, Folder items are ALWAYS in front of its children items.
- * Error key in the item will contain the error when there is a handleable error.
- */
 export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem, void, undefined> {
   const hashedToken = getStoredToken(path)
 
-  // Generate the task passed to Promise.race to request a folder
   const genTask = async (i: number, path: string, next?: string) => {
     return {
       i,
@@ -183,11 +137,8 @@ export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem
     }
   }
 
-  // Pool containing Promises of folder requests
   const pool = [genTask(0, path)]
   const activeTasks = () => pool.filter(Boolean)
-
-  // Map as item buffer for folders with pagination
   const buf: { [k: string]: TraverseItem[] } = {}
 
   while (activeTasks().length > 0) {
@@ -196,15 +147,9 @@ export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem
       info = await Promise.race(activeTasks())
     } catch (error: any) {
       const { i, path, error: innerError } = error
-      // 4xx errors are identified as handleable errors
       if (Math.floor(innerError.status / 100) === 4) {
         delete pool[i]
-        yield {
-          path,
-          meta: {},
-          isFolder: true,
-          error: { status: innerError.status, message: innerError.message.error },
-        }
+        yield { path, meta: {}, isFolder: true, error: { status: innerError.status, message: innerError.message.error } }
         continue
       } else {
         throw error
@@ -212,9 +157,7 @@ export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem
     }
 
     const { i, path, data } = info
-    if (!data || !data.folder) {
-      throw new Error('Path is not folder')
-    }
+    if (!data || !data.folder) throw new Error('Path is not folder')
     delete pool[i]
 
     const items = data.folder.value.map((c: any) => ({
@@ -225,20 +168,15 @@ export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem
 
     if (data.next) {
       buf[path] = (buf[path] ?? []).concat(items)
-
-      // Append next page task to the pool at the end
       const i = pool.length
       pool[i] = genTask(i, path, data.next)
     } else {
       const allItems = (buf[path] ?? []).concat(items)
-      if (buf[path]) {
-        delete buf[path]
-      }
+      if (buf[path]) delete buf[path]
 
       allItems
         .filter(item => item.isFolder)
         .forEach(item => {
-          // Append new folder tasks to the pool at the end
           const i = pool.length
           pool[i] = genTask(i, item.path)
         })

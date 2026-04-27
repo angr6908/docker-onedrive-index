@@ -2,8 +2,7 @@ import { GetServerSideProps } from 'next'
 import { useRouter } from 'next/router'
 
 import DrivePage from '../components/DrivePage'
-import { getServerSidePublicConfigProps } from '../utils/getServerSidePublicConfigProps'
-import { PublicRuntimeConfig } from '../utils/publicRuntimeConfig'
+import { getServerSidePublicConfigProps, PublicRuntimeConfig } from '../utils/publicRuntimeConfig'
 
 export default function Folders({ publicConfig }: { publicConfig: PublicRuntimeConfig }) {
   const { query } = useRouter()

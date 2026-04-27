@@ -13,21 +13,12 @@ import {
 import { encodePath, runCorsMiddleware } from '../../utils/onedriveApi'
 
 const shouldProxyFile = (proxy: NextApiRequest['query'][string]) => proxy === 'true' || proxy === '1'
-const toOutgoingHeaders = (
-  headers: Record<string, unknown>,
-  cacheControl: ReturnType<NextApiResponse['getHeader']>,
-) => {
-  const outgoingHeaders: OutgoingHttpHeaders = {}
-
-  Object.entries(headers).forEach(([key, value]) => {
-    if (typeof value === 'number' || typeof value === 'string' || Array.isArray(value)) {
-      outgoingHeaders[key] = value
-    }
-  })
-
-  outgoingHeaders['Cache-Control'] = cacheControl
-  return outgoingHeaders
-}
+const toOutgoingHeaders = (headers: Record<string, unknown>, cacheControl: ReturnType<NextApiResponse['getHeader']>): OutgoingHttpHeaders => ({
+  ...Object.fromEntries(
+    Object.entries(headers).filter(([, v]) => typeof v === 'number' || typeof v === 'string' || Array.isArray(v)),
+  ),
+  'Cache-Control': cacheControl,
+})
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const accessToken = await requireAccessToken(res)
@@ -41,7 +32,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  // Handle protected routes authentication
   const odTokenHeader = (req.headers['od-protected-token'] as string) ?? odpt
   const hasAccess = await verifyProtectedPath(res, pathQuery.path, accessToken, odTokenHeader as string)
   if (!hasAccess) return
@@ -49,14 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await runCorsMiddleware(req, res)
   try {
-    // Handle response from OneDrive API
     const requestUrl = `${driveApi}/root${encodePath(pathQuery.path)}`
     const { data } = await axios.get(requestUrl, {
       headers: graphHeaders(accessToken),
-      params: {
-        // OneDrive international version fails when only selecting the downloadUrl (what a stupid bug)
-        select: 'id,size,@microsoft.graph.downloadUrl',
-      },
+      params: { select: 'id,size,@microsoft.graph.downloadUrl' },
     })
 
     const downloadUrl = data['@microsoft.graph.downloadUrl']
@@ -65,7 +51,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return
     }
 
-    // Only proxy raw file content response for files up to 4MB
     if (shouldProxyFile(proxy) && 'size' in data && data.size < 4194304) {
       const { headers, data: stream } = await axios.get(downloadUrl as string, { responseType: 'stream' })
       res.writeHead(200, toOutgoingHeaders(headers, responseCacheControl))

@@ -11,10 +11,9 @@ import useLocalStorage from '../utils/useLocalStorage'
 import { getPreviewType, preview } from '../utils/getPreviewType'
 import { useProtectedSWRInfinite } from '../utils/fetchWithSWR'
 import { getExtension } from '../utils/getFileIcon'
-import { getItemPath, queryToPath } from '../utils/drivePath'
+import { getItemPath, queryToPath, isNotPersonalVaultItem } from '../utils/drivePath'
 import { rawFileUrl } from '../utils/odUrls'
 import { getStoredToken } from '../utils/protectedRouteHandler'
-import { isNotPersonalVaultItem } from '../utils/personalVault'
 import {
   DownloadingToast,
   downloadMultipleFiles,
@@ -131,7 +130,6 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
     const folderChildren = path === '/' ? allFolderChildren.filter(isNotPersonalVaultItem) : allFolderChildren
     const files = folderChildren.filter(isSelectableFile)
 
-    // Find README.md file to render
     const readmeFile = folderChildren.find(c => c.name.toLowerCase() === 'readme.md')
 
     const toggleItemSelected = (id: string) => {
@@ -155,7 +153,6 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
       }
     }
 
-    // Selected file download
     const handleSelectedDownload = () => {
       const folderName = path.substring(path.lastIndexOf('/') + 1)
       const folder = folderName ? decodeURIComponent(folderName) : undefined
@@ -184,7 +181,6 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
       }
     }
 
-    // Get selected file permalink
     const handleSelectedPermalink = (baseUrl: string) => {
       return files
         .filter(c => selected[c.id])
@@ -192,7 +188,6 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
         .join('\n')
     }
 
-    // Folder recursive download
     const handleFolderDownload = (path: string, id: string, name?: string) => () => {
       const files = (async function* () {
         for await (const { meta: c, path: p, isFolder, error } of traverseFolder(path)) {
@@ -229,7 +224,6 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
         .finally(() => setFolderGenerating(folderGenerating => ({ ...folderGenerating, [id]: false })))
     }
 
-    // Folder layout component props
     const folderProps = {
       toast,
       path,

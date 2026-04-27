@@ -36,29 +36,12 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
 
   if ('access_token' in resp.data && 'refresh_token' in resp.data) {
     const { expires_in, access_token, refresh_token } = resp.data
-    await storeOdAuthTokens({
-      accessToken: access_token,
-      accessTokenExpiry: parseInt(expires_in),
-      refreshToken: refresh_token,
-    })
+    await storeOdAuthTokens({ accessToken: access_token, accessTokenExpiry: parseInt(expires_in), refreshToken: refresh_token })
     console.log('Fetch new access token with stored refresh token.')
     return access_token
   }
 
   return ''
-}
-
-function logTokenRefreshError(error: unknown) {
-  if (axios.isAxiosError(error)) {
-    console.error('[onedriveApi] Failed to refresh access token.', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-    })
-    return
-  }
-
-  console.error('[onedriveApi] Failed to refresh access token.', error)
 }
 
 export async function getAccessToken(): Promise<string> {
@@ -84,7 +67,11 @@ export async function getAccessToken(): Promise<string> {
   try {
     return await refreshAccessTokenPromise
   } catch (error) {
-    logTokenRefreshError(error)
+    if (axios.isAxiosError(error)) {
+      console.error('[onedriveApi] Failed to refresh access token.', { status: error.response?.status, message: error.message })
+    } else {
+      console.error('[onedriveApi] Failed to refresh access token.', error)
+    }
     return ''
   }
 }
@@ -92,10 +79,9 @@ export async function getAccessToken(): Promise<string> {
 export function getAuthTokenPath(path: string) {
   const cleanPath = `${path.toLowerCase()}/`
   const route = (siteConfig.protectedRoutes as string[])
-    .filter(route => typeof route === 'string')
-    .map(route => `${route.toLowerCase().replace(/\/$/, '')}/`)
-    .find(route => cleanPath.startsWith(route))
-
+    .filter((r): r is string => typeof r === 'string')
+    .map(r => `${r.toLowerCase().replace(/\/$/, '')}/`)
+    .find(r => cleanPath.startsWith(r))
   return route ? `${route}.password` : ''
 }
 

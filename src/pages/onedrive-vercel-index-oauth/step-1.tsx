@@ -4,8 +4,7 @@ import { useRouter } from 'next/router'
 import { FontAwesomeIcon } from '../../utils/fontawesome'
 import OAuthCard from '../../components/OAuthCard'
 import PageLayout from '../../components/PageLayout'
-import { getServerSidePublicConfigProps } from '../../utils/getServerSidePublicConfigProps'
-import { PublicRuntimeConfig } from '../../utils/publicRuntimeConfig'
+import { getServerSidePublicConfigProps, PublicRuntimeConfig } from '../../utils/publicRuntimeConfig'
 
 type OAuthConfig = {
   clientId: string

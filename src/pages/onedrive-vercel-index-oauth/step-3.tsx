@@ -8,8 +8,7 @@ import PageLayout from '../../components/PageLayout'
 
 import { requestTokenWithAuthCode, sendTokenToServer } from '../../utils/oAuthHandler'
 import { LoadingIcon } from '../../components/Loading'
-import { getServerSidePublicConfigProps } from '../../utils/getServerSidePublicConfigProps'
-import { PublicRuntimeConfig } from '../../utils/publicRuntimeConfig'
+import { getServerSidePublicConfigProps, PublicRuntimeConfig } from '../../utils/publicRuntimeConfig'
 
 type StoreTokenStatus = 'idle' | 'loading' | 'stored' | 'error'
 

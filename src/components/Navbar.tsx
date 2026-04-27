@@ -7,7 +7,6 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useState } from 'react'
 
-import useDeviceOS from '../utils/useDeviceOS'
 import { getPublicRuntimeConfig } from '../utils/publicRuntimeConfig'
 
 const BrandIcon = dynamic(() => import('./BrandIcon'))
@@ -16,9 +15,14 @@ const SearchModal = dynamic(() => import('./SearchModal'), { ssr: false })
 
 const Navbar = () => {
   const router = useRouter()
-  const os = useDeviceOS()
+  const [os, setOs] = useState('')
   const siteConfig = getPublicRuntimeConfig()
   const protectedRoutes = siteConfig.protectedRoutes
+
+  useEffect(() => {
+    const ua = window.navigator.userAgent
+    setOs(ua.includes('Windows') ? 'windows' : ua.includes('Mac OS') ? 'mac' : ua.includes('Linux') ? 'linux' : 'other')
+  }, [])
 
   const [tokenPresent, setTokenPresent] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
@@ -98,11 +102,7 @@ const Navbar = () => {
               >
                 <BrandIcon name={l.name} />
                 <span className="hidden text-sm font-medium md:inline-block">
-                  {
-                    // Append link name comments here to add translations
-                    // 'Weibo'
-                    l.name
-                  }
+                  {l.name}
                 </span>
               </a>
             ))}

@@ -2,11 +2,6 @@ import { useEffect, useState } from 'react'
 import { appendProtectedToken } from './odUrls'
 import { getStoredToken } from './protectedRouteHandler'
 
-/**
- * Custom hook for axios to fetch raw file content on component mount
- * @param fetchUrl The URL pointing to the raw file content
- * @param path The path of the file, used for determining whether path is protected
- */
 export default function useFileContent(
   fetchUrl: string,
   path: string,
@@ -23,23 +18,14 @@ export default function useFileContent(
     setValidating(true)
     setError('')
 
-    fetch(url, {
-      headers: { Accept: 'text/plain, */*' },
-      signal: controller.signal,
-    })
+    fetch(url, { headers: { Accept: 'text/plain, */*' }, signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error(response.statusText || `Request failed with ${response.status}`)
         return response.text()
       })
-      .then(text => {
-        if (active) setResponse(text)
-      })
-      .catch(error => {
-        if (active && error.name !== 'AbortError') setError(error.message)
-      })
-      .finally(() => {
-        if (active) setValidating(false)
-      })
+      .then(text => { if (active) setResponse(text) })
+      .catch(error => { if (active && error.name !== 'AbortError') setError(error.message) })
+      .finally(() => { if (active) setValidating(false) })
 
     return () => {
       active = false

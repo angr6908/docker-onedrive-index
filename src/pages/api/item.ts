@@ -9,8 +9,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const accessToken = await getAccessToken()
   const { id = '' } = req.query
 
-  // Set edge function caching for faster load times, check docs:
-  // https://vercel.com/docs/concepts/functions/edge-caching
   res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
 
   if (typeof id !== 'string') {
@@ -21,9 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { data } = await axios.get(`${apiConfig.driveApi}/items/${id}`, {
       headers: graphHeaders(accessToken),
-      params: {
-        select: 'id,name,parentReference',
-      },
+      params: { select: 'id,name,parentReference' },
     })
     res.status(200).json(data)
   } catch (error: any) {
