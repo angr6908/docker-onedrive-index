@@ -25,6 +25,7 @@ services:
       NEXT_PUBLIC_SITE_EMAIL: ""
       NEXT_PUBLIC_SITE_LINKS: "[]"
       NEXT_PUBLIC_DATETIME_FORMAT: "YYYY-MM-DD HH:mm:ss"
+      # NAT64_DNS: ""
 ```
 
 Start the service with:
