@@ -10,8 +10,7 @@ services:
     image: unmol637/onedrive-index:latest
     container_name: onedrive-index
     restart: always
-    ports:
-      - "3000:3000"
+    network_mode: host
     volumes:
       - ./data:/app/data
     environment:
